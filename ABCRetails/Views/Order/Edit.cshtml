@@ -1,0 +1,325 @@
+﻿@model ABCRetails.Models.ViewModels.OrderEditViewModel
+
+@{
+    ViewData["Title"] = "Edit Order";
+}
+
+<!-- Enhanced Header with Block Bubble Effect -->
+<div class="header-bubble mb-4">
+    <h1 class="text-white">Edit Order</h1>
+    <div class="bubble-decoration">
+        <div class="bubble"></div>
+        <div class="bubble"></div>
+        <div class="bubble"></div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-9">
+        <form asp-action="Edit" class="shadow-sm p-4 bg-white rounded" enctype="multipart/form-data">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <!-- Hidden system fields -->
+            <input type="hidden" asp-for="Order.PartitionKey" />
+            <input type="hidden" asp-for="Order.RowKey" />
+            <input type="hidden" asp-for="Order.Timestamp" />
+            <input type="hidden" asp-for="Order.ETag" />
+            <input type="hidden" asp-for="Order.OrderId" />
+            <input type="hidden" asp-for="Order.CustomerId" />
+            <input type="hidden" asp-for="Order.Username" />
+            <input type="hidden" asp-for="Order.ProductName" />
+            <input type="hidden" asp-for="Order.UnitPrice" />
+            <input type="hidden" asp-for="Order.TotalPrice" />
+
+            <!-- Order Information -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Order Information</h5>
+                </div>
+                <div class="card-body row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Order ID</label>
+                        <input asp-for="Order.OrderId" class="form-control" readonly />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Customer</label>
+                        <select asp-for="Order.CustomerId" class="form-control" disabled>
+                            <option value="">Select Customer</option>
+                            @foreach (var customer in Model.Customers)
+                            {
+                                <option value="@customer.CustomerId" selected="@(customer.CustomerId == Model.Order.CustomerId)">
+                                    @customer.Name @customer.Surname (@customer.Username)
+                                </option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Product</label>
+                        <select asp-for="Order.ProductId" class="form-control" id="productDropdown">
+                            <option value="">Select Product</option>
+                            @foreach (var product in Model.Products)
+                            {
+                                <option value="@product.ProductId" data-price="@product.Price"
+                                        selected="@(product.ProductId == Model.Order.ProductId)">
+                                    @product.ProductName - @product.Price.ToString("0.00") (Stock: @product.StockAvailable)
+                                </option>
+                            }
+                        </select>
+                    </div>
+
+                    <!-- Product Image Upload Section -->
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="Image">Product Image</label>
+                            <input type="file" class="form-control" id="Image" name="Image" accept="image/*" />
+                            <small class="form-text text-muted">
+                                Leave empty to keep the current image
+                            </small>
+
+                            <div class="mt-2" id="current-image-container">
+                                <p>Current Image:</p>
+                                @if (!string.IsNullOrEmpty(Model.Order.ProductImageUrl))
+                                {
+                                    <img src="@Model.Order.ProductImageUrl" alt="Current product image"
+                                         class="img-thumbnail" style="max-height: 200px;" />
+                                }
+                                else
+                                {
+                                    <p>No image set</p>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Quantity</label>
+                        <input asp-for="Order.Quantity" class="form-control" id="quantityInput" min="1" />
+                        <small id="stockMessage" class="form-text"></small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pricing & Status -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Pricing & Status</h5>
+                </div>
+                <div class="card-body row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Unit Price</label>
+                        <input asp-for="Order.UnitPrice" class="form-control" readonly id="unitPriceDisplay" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Total Price</label>
+                        <input asp-for="Order.TotalPrice" class="form-control" readonly id="totalPriceDisplay" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Order Date</label>
+                        <input asp-for="Order.OrderDate" class="form-control" type="date" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Status</label>
+                        <select asp-for="Order.Status" class="form-control">
+                            @foreach (var status in Model.StatusOptions)
+                            {
+                                <option value="@status" selected="@(status == Model.Order.Status)">@status</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action buttons -->
+            <div class="d-flex justify-content-between">
+                <a asp-action="Index" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-1"></i> Back to List
+                </a>
+                <button type="submit" class="btn btn-primary px-4">Save Changes</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Product Image Preview Card -->
+    <div class="col-md-3">
+        <div class="card shadow-sm sticky-top" style="top: 1rem;">
+            <div class="card-header bg-light text-center">
+                <h6 class="mb-0">Product Image Preview</h6>
+            </div>
+            <div class="card-body text-center">
+                <img id="productImage" src="@Model.Order.ProductImageUrl" alt="Product Image"
+                     class="img-fluid rounded mb-2 border" style="max-height: 220px;" />
+                <p id="noImageMessage" class="text-muted" style="display:@(string.IsNullOrEmpty(Model.Order.ProductImageUrl) ? "block" : "none");">
+                    No image available
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .header-bubble {
+            background: linear-gradient(135deg, #4e54c8, #8f94fb);
+            padding: 1.5rem 2rem;
+            border-radius: 16px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 20px rgba(78, 84, 200, 0.3);
+        }
+
+            .header-bubble h1 {
+                font-weight: 700;
+                font-size: 2.5rem;
+                margin: 0;
+                position: relative;
+                z-index: 2;
+            }
+
+        .bubble-decoration {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .bubble {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+            .bubble:nth-child(1) {
+                width: 80px;
+                height: 80px;
+                top: -20px;
+                right: 30px;
+            }
+
+            .bubble:nth-child(2) {
+                width: 60px;
+                height: 60px;
+                bottom: -15px;
+                left: 40px;
+            }
+
+            .bubble:nth-child(3) {
+                width: 40px;
+                height: 40px;
+                bottom: 30px;
+                right: 60px;
+            }
+
+        .btn {
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(to right, #4e54c8, #8f94fb);
+            border: none;
+        }
+
+            .btn-primary:hover {
+                background: linear-gradient(to right, #3a3fb8, #7a80f0);
+                transform: translateY(-2px);
+                box-shadow: 0 4px 8px rgba(78, 84, 200, 0.3);
+            }
+
+        .btn-outline-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(108, 117, 125, 0.3);
+        }
+    </style>
+}
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+
+    <script>
+        $(document).ready(function () {
+            updatePriceDisplay();
+            updateStockMessage();
+            updateProductImage();
+
+            $('#productDropdown').change(function () {
+                updateProductDetails();
+                updatePriceDisplay();
+                updateStockMessage();
+                updateProductImage();
+            });
+
+            $('#quantityInput').on('input', function () {
+                updatePriceDisplay();
+                updateStockMessage();
+            });
+
+            function updateProductDetails() {
+                var selectedProduct = $('#productDropdown option:selected');
+                var price = selectedProduct.data('price');
+                $('#Order_UnitPrice').val(price);
+            }
+
+            function updatePriceDisplay() {
+                var unitPrice = parseFloat($('#Order_UnitPrice').val()) || 0;
+                var quantity = parseInt($('#quantityInput').val()) || 0;
+                var totalPrice = unitPrice * quantity;
+                $('#unitPriceDisplay').val(unitPrice.toFixed(2));
+                $('#totalPriceDisplay').val(totalPrice.toFixed(2));
+                $('#Order_TotalPrice').val(totalPrice);
+            }
+
+            function updateStockMessage() {
+                var selectedProduct = $('#productDropdown option:selected');
+                var availableStock = 0;
+
+                if (selectedProduct.length > 0 && selectedProduct.val() !== '') {
+                    var productText = selectedProduct.text();
+                    var stockMatch = productText.match(/Stock: (\d+)/);
+                    if (stockMatch) availableStock = parseInt(stockMatch[1]);
+                }
+
+                var quantity = parseInt($('#quantityInput').val()) || 0;
+                if (availableStock > 0) {
+                    if (quantity > availableStock) {
+                        $('#stockMessage').html('<span class="badge bg-danger">Insufficient stock! Available: ' + availableStock + '</span>');
+                    } else {
+                        $('#stockMessage').html('<span class="badge bg-success">Available stock: ' + availableStock + '</span>');
+                    }
+                } else {
+                    $('#stockMessage').html('<span class="badge bg-secondary">Stock information not available</span>');
+                }
+            }
+
+            function updateProductImage() {
+                var selectedProductId = $('#productDropdown').val();
+                if (selectedProductId) {
+                    $.get('@Url.Action("GetProductImage", "Order")', { productId: selectedProductId })
+                        .done(function (data) {
+                            if (data.success && data.imageUrl) {
+                                $('#productImage').attr('src', data.imageUrl).show();
+                                $('#noImageMessage').hide();
+                            } else {
+                                $('#productImage').hide();
+                                $('#noImageMessage').show();
+                            }
+                        })
+                        .fail(function () {
+                            $('#productImage').hide();
+                            $('#noImageMessage').show();
+                        });
+                } else {
+                    $('#productImage').hide();
+                    $('#noImageMessage').show();
+                }
+            }
+        });
+    </script>
+}
