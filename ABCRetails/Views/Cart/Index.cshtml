@@ -4,6 +4,11 @@
     ViewData["Title"] = "Shopping Cart";
 }
 
+@* Add CSRF token *@
+<form method="post" style="display:none;">
+    @Html.AntiForgeryToken()
+</form>
+
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="display-6 text-primary">
         <i class="fas fa-shopping-cart me-2"></i>@ViewData["Title"]
@@ -126,29 +131,51 @@ else
 
 @section Scripts {
     <script>
-        function updateQuantity(cartId, newQuantity) {
-            if (newQuantity < 1) return;
-
-            fetch('@Url.Action("UpdateCartItem", "Cart")', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
-                },
-                body: JSON.stringify({ cartId: cartId, quantity: parseInt(newQuantity) })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    location.reload();
-                } else {
-                    alert(data.message);
+                       async function addToCart(productId) {
+            try {
+                const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+                if (!token) {
+                    console.error('CSRF token not found');
+                    showToast('Security token missing. Please refresh the page.', 'error');
+                    return;
                 }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Error updating cart item.');
-            });
+
+                const response = await fetch('@Url.Action("AddToCart", "Cart")', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        'productId': productId,
+                        'quantity': '1',
+                        '__RequestVerificationToken': token
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showToast('Product added to cart!', 'success');
+                    updateCartCount();
+                } else {
+                    showToast(result.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error adding to cart:', error);
+                showToast('Error adding product to cart.', 'error');
+            }
+        }
+
+        async function updateCartCount() {
+            try {
+                const response = await fetch('@Url.Action("GetCartCount", "Cart")');
+                const data = await response.json();
+                const cartBadge = document.getElementById('cartCount');
+                if (cartBadge) {
+                    cartBadge.textContent = data.count;
+                }
+            } catch (error) {
+                console.error('Error updating cart count:', error);
+            }
         }
 
         function removeItem(cartId) {

@@ -2,6 +2,11 @@
     ViewData["Title"] = "My Dashboard";
 }
 
+@* Add CSRF token for AJAX requests *@
+<form style="display:none;">
+    @Html.AntiForgeryToken()
+</form>
+
 <div class="row">
     <div class="col-12">
         <div class="page-header d-flex align-items-center justify-content-between mb-4">
@@ -148,35 +153,34 @@
                     <i class="fas fa-star text-warning me-2"></i>Featured Products
                 </h5>
             </div>
-            <div class="card-body">
-                @if (ViewBag.FeaturedProducts != null && ViewBag.FeaturedProducts.Count > 0)
+            <div class="list-group list-group-flush">
+                @foreach (var product in ViewBag.FeaturedProducts)
                 {
-                    <div class="list-group list-group-flush">
-                        @foreach (var product in ViewBag.FeaturedProducts)
-                        {
-                            <div class="list-group-item">
-                                <div class="d-flex align-items-center">
-                                    @if (!string.IsNullOrEmpty(product.ImageUrl))
-                                    {
-                                        <img src="@product.ImageUrl" class="rounded me-3" alt="@product.ProductName" style="width: 50px; height: 50px; object-fit: cover;">
-                                    }
-                                    else
-                                    {
-                                        <div class="bg-light rounded me-3 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
-                                            <i class="fas fa-image text-muted"></i>
-                                        </div>
-                                    }
-                                    <div class="flex-grow-1">
-                                        <h6 class="mb-1">@product.ProductName</h6>
-                                        <small class="text-muted">@product.Price.ToString("C")</small>
-                                    </div>
-                                    <button class="btn btn-primary btn-sm add-to-cart-featured" data-product-id="@product.ProductId">
-                                        <i class="fas fa-cart-plus"></i>
-                                    </button>
+                    <div class="list-group-item">
+                        <div class="d-flex align-items-center">
+                            @if (!string.IsNullOrEmpty(product.ImageUrl))
+                            {
+                                <img src="@product.ImageUrl" class="rounded me-3" alt="@product.ProductName" style="width: 50px; height: 50px; object-fit: cover;">
+                            }
+                            else
+                            {
+                                <div class="bg-light rounded me-3 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                                    <i class="fas fa-image text-muted"></i>
                                 </div>
+                            }
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1">@product.ProductName</h6>
+                                <small class="text-muted">@product.Price.ToString("C")</small>
                             </div>
-                        }
+                            <button class="btn btn-primary btn-sm add-to-cart-featured"
+                                    data-product-id="@product.RowKey"
+                                    type="button">
+                                <i class="fas fa-cart-plus"></i>
+                            </button>
+                        </div>
                     </div>
+                }
+            </div>
                 }
                 else
                 {
@@ -266,15 +270,22 @@
 
 @section Scripts {
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+                document.addEventListener('DOMContentLoaded', function() {
             loadCustomerDashboardData();
 
             // Add event listeners for featured products add to cart buttons
             const featuredCartButtons = document.querySelectorAll('.add-to-cart-featured');
             featuredCartButtons.forEach(button => {
-                button.addEventListener('click', function() {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
                     const productId = this.getAttribute('data-product-id');
-                    addToCart(productId);
+                    console.log('Adding product to cart:', productId); // Debug log
+                    if (productId) {
+                        addToCart(productId);
+                    } else {
+                        console.error('Product ID is missing');
+                        showToast('Error: Product ID is missing', 'error');
+                    }
                 });
             });
         });
@@ -344,27 +355,59 @@
             }
         }
 
-        async function addToCart(productId) {
+                     async function addToCart(productId) {
             try {
+                console.log('addToCart called with:', productId); // Debug log
+
+                const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+                if (!token) {
+                    console.error('CSRF token not found');
+                    showToast('Security token missing. Please refresh the page.', 'error');
+                    return;
+                }
+
                 const response = await fetch('@Url.Action("AddToCart", "Cart")', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                        'Content-Type': 'application/x-www-form-urlencoded',
                     },
-                    body: JSON.stringify({ productId: productId, quantity: 1 })
+                    body: new URLSearchParams({
+                        'productId': productId,
+                        'quantity': '1',
+                        '__RequestVerificationToken': token
+                    })
                 });
 
                 const result = await response.json();
+                console.log('Add to cart result:', result); // Debug log
+
                 if (result.success) {
                     showToast('Product added to cart!', 'success');
                     updateCartCount();
                 } else {
-                    showToast(result.message, 'error');
+                    showToast(result.message || 'Error adding product to cart', 'error');
                 }
             } catch (error) {
                 console.error('Error adding to cart:', error);
                 showToast('Error adding product to cart.', 'error');
+            }
+        }
+        }
+
+        // Update cart count function
+        async function updateCartCount() {
+            try {
+                const response = await fetch('@Url.Action("GetCartCount", "Cart")');
+                if (response.ok) {
+                    const data = await response.json();
+                    const cartBadge = document.getElementById('cartCount');
+                    if (cartBadge) {
+                        cartBadge.textContent = data.count;
+                        cartBadge.style.display = data.count > 0 ? 'inline' : 'none';
+                    }
+                }
+            } catch (error) {
+                console.error('Error updating cart count:', error);
             }
         }
 
@@ -388,14 +431,7 @@
             }, 3000);
         }
 
-        function updateCartCount() {
-            // Update cart count in navbar
-            const cartBadge = document.getElementById('cartCount');
-            if (cartBadge) {
-                const currentCount = parseInt(cartBadge.textContent) || 0;
-                cartBadge.textContent = currentCount + 1;
-            }
-        }
+        
 
         function displayErrorMessages() {
             const ordersContainer = document.getElementById('myRecentOrders');

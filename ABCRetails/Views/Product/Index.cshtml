@@ -5,6 +5,11 @@
     var isCustomer = ViewBag.IsCustomer as bool? ?? false;
 }
 
+@* Add CSRF token for AJAX requests *@
+<form style="display:none;">
+    @Html.AntiForgeryToken()
+</form>
+
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="display-6 text-primary">
         <i class="fas fa-box me-2"></i>@ViewData["Title"]
@@ -139,23 +144,34 @@
 
         .product-image-container {
             position: relative;
-            height: 200px;
+            height: 250px;
             overflow: hidden;
+            background-color: #f8f9fa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
         }
 
-        .product-image {
-            height: 100%;
-            object-fit: cover;
+        .product-img-fit {
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            object-fit: contain;
             transition: transform 0.3s ease;
         }
 
-        .product-card:hover .product-image {
+        .product-card:hover .product-img-fit {
             transform: scale(1.05);
         }
 
         .product-image-placeholder {
-            height: 200px;
+            height: 250px;
             background-color: #f8f9fa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .product-stock-badge {
@@ -167,6 +183,7 @@
             font-size: 0.75rem;
             font-weight: 600;
             color: white;
+            z-index: 10;
         }
 
         .card-title {
@@ -191,42 +208,44 @@
     @if (isCustomer)
     {
         <script>
-            // Add to cart functionality for customer
+            document.addEventListener('DOMContentLoaded', function() {
+                const addToCartButtons = document.querySelectorAll('.add-to-cart-btn');
+
+                addToCartButtons.forEach(button => {
+                    button.addEventListener('click', function() {
+                        const productId = this.getAttribute('data-product-id');
+                        addToCart(productId);
+                    });
+                });
+            });
+
             async function addToCart(productId) {
                 try {
-                    // First verify the product exists and can be added
-                    const verifyResponse = await fetch('@Url.Action("AddToCart", "Product")', {
+                    const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+                    if (!token) {
+                        console.error('CSRF token not found');
+                        showToast('Security token missing. Please refresh the page.', 'error');
+                        return;
+                    }
+
+                    const response = await fetch('@Url.Action("AddToCart", "Cart")', {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json',
-                            'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                            'Content-Type': 'application/x-www-form-urlencoded',
                         },
-                        body: JSON.stringify({ productId: productId, quantity: 1 })
+                        body: new URLSearchParams({
+                            'productId': productId,
+                            'quantity': '1',
+                            '__RequestVerificationToken': token
+                        })
                     });
 
-                    const verifyResult = await verifyResult.json();
-
-                    if (verifyResult.success) {
-                        // Now add to cart via CartController
-                        const response = await fetch('@Url.Action("AddToCart", "Cart")', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
-                            },
-                            body: JSON.stringify({ productId: productId, quantity: 1 })
-                        });
-
-                        const result = await response.json();
-                        if (result.success) {
-                            showToast('Product added to cart!', 'success');
-                            // Update cart count
-                            updateCartCount();
-                        } else {
-                            showToast(result.message, 'error');
-                        }
+                    const result = await response.json();
+                    if (result.success) {
+                        showToast('Product added to cart!', 'success');
+                        updateCartCount();
                     } else {
-                        showToast(verifyResult.message, 'error');
+                        showToast(result.message, 'error');
                     }
                 } catch (error) {
                     console.error('Error adding to cart:', error);
@@ -234,13 +253,16 @@
                 }
             }
 
-            function updateCartCount() {
-                // This would typically fetch the actual cart count from your API
-                // For now, we'll increment a counter
-                const cartBadge = document.getElementById('cartCount');
-                if (cartBadge) {
-                    const currentCount = parseInt(cartBadge.textContent) || 0;
-                    cartBadge.textContent = currentCount + 1;
+            async function updateCartCount() {
+                try {
+                    const response = await fetch('@Url.Action("GetCartCount", "Cart")');
+                    const data = await response.json();
+                    const cartBadge = document.getElementById('cartCount');
+                    if (cartBadge) {
+                        cartBadge.textContent = data.count;
+                    }
+                } catch (error) {
+                    console.error('Error updating cart count:', error);
                 }
             }
 
@@ -261,18 +283,6 @@
                     }
                 }, 3000);
             }
-
-            // Add event listeners to all "Add to Cart" buttons
-            document.addEventListener('DOMContentLoaded', function() {
-                const addToCartButtons = document.querySelectorAll('.add-to-cart-btn');
-
-                addToCartButtons.forEach(button => {
-                    button.addEventListener('click', function() {
-                        const productId = this.getAttribute('data-product-id');
-                        addToCart(productId);
-                    });
-                });
-            });
         </script>
     }
 }

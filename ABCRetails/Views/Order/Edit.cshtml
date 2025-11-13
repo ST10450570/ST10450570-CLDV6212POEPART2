@@ -19,17 +19,18 @@
         <form asp-action="Edit" class="shadow-sm p-4 bg-white rounded">
             <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
-            <!-- Hidden system fields -->
+            <!-- Hidden fields -->
+            <input type="hidden" asp-for="Id" />
             <input type="hidden" asp-for="Order.PartitionKey" />
             <input type="hidden" asp-for="Order.RowKey" />
             <input type="hidden" asp-for="Order.Timestamp" />
             <input type="hidden" asp-for="Order.ETag" />
-            <input type="hidden" asp-for="Order.OrderId" />
             <input type="hidden" asp-for="Order.CustomerId" />
             <input type="hidden" asp-for="Order.Username" />
+            <input type="hidden" asp-for="Order.ProductId" />
             <input type="hidden" asp-for="Order.ProductName" />
             <input type="hidden" asp-for="Order.UnitPrice" />
-            <input type="hidden" asp-for="Order.TotalPrice" />
+            <input type="hidden" asp-for="Order.ProductImageUrl" />
 
             <!-- Order Information -->
             <div class="card shadow-sm mb-4">
@@ -39,24 +40,24 @@
                 <div class="card-body row g-3">
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Order ID</label>
-                        <input asp-for="Order.OrderId" class="form-control" readonly />
+                        <input value="@Model.Order.OrderId" class="form-control" readonly />
                     </div>
 
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Customer</label>
-                        <input asp-for="Order.Username" class="form-control" readonly />
+                        <input value="@Model.Order.Username" class="form-control" readonly />
                         <small class="form-text text-muted">Customer ID: @Model.Order.CustomerId</small>
                     </div>
 
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Product</label>
-                        <input asp-for="Order.ProductName" class="form-control" readonly />
+                        <input value="@Model.Order.ProductName" class="form-control" readonly />
                         <small class="form-text text-muted">Product ID: @Model.Order.ProductId</small>
                     </div>
 
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">Quantity</label>
-                        <input asp-for="Order.Quantity" class="form-control" min="1" />
+                        <label asp-for="Order.Quantity" class="form-label fw-semibold"></label>
+                        <input asp-for="Order.Quantity" class="form-control" type="number" min="1" />
                         <span asp-validation-for="Order.Quantity" class="text-danger"></span>
                     </div>
                 </div>
@@ -70,26 +71,26 @@
                 <div class="card-body row g-3">
                     <div class="col-md-4">
                         <label class="form-label fw-semibold">Unit Price</label>
-                        <input asp-for="Order.UnitPrice" class="form-control" readonly />
+                        <input value="@Model.Order.UnitPrice.ToString("C")" class="form-control" readonly />
                     </div>
 
                     <div class="col-md-4">
                         <label class="form-label fw-semibold">Total Price</label>
-                        <input asp-for="Order.TotalPrice" class="form-control" readonly />
+                        <input value="@Model.Order.TotalPrice.ToString("C")" class="form-control" readonly />
                     </div>
 
                     <div class="col-md-4">
-                        <label class="form-label fw-semibold">Order Date</label>
+                        <label asp-for="Order.OrderDate" class="form-label fw-semibold"></label>
                         <input asp-for="Order.OrderDate" class="form-control" type="date" />
                         <span asp-validation-for="Order.OrderDate" class="text-danger"></span>
                     </div>
 
                     <div class="col-md-12">
-                        <label class="form-label fw-semibold">Status</label>
+                        <label asp-for="Order.Status" class="form-label fw-semibold"></label>
                         <select asp-for="Order.Status" class="form-control">
                             @foreach (var status in Model.StatusOptions)
                             {
-                                <option value="@status" selected="@(status == Model.Order.Status)">@status</option>
+                                <option value="@status">@status</option>
                             }
                         </select>
                         <span asp-validation-for="Order.Status" class="text-danger"></span>

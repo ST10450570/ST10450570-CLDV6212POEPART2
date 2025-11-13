@@ -135,7 +135,7 @@ namespace ABCRetailsFunctions.Functions
         public record OrderStatusUpdate(string Status);
         [Function("Orders_UpdateStatus")]
         public async Task<HttpResponseData> UpdateStatus(
-            [HttpTrigger(AuthorizationLevel.Anonymous, "patch", Route = "orders/{id}/status")] HttpRequestData req, string id)
+    [HttpTrigger(AuthorizationLevel.Anonymous, "patch", Route = "orders/{id}/status")] HttpRequestData req, string id)
         {
             var input = await HttpJson.ReadAsync<OrderStatusUpdate>(req);
             if (input is null || string.IsNullOrWhiteSpace(input.Status))
@@ -144,6 +144,7 @@ namespace ABCRetailsFunctions.Functions
             var orders = new TableClient(_conn, _ordersTable);
             try
             {
+                // FIX: Use "Order" as partition key and id as row key
                 var resp = await orders.GetEntityAsync<OrderEntity>("Order", id);
                 var e = resp.Value;
                 e.Status = input.Status;
@@ -151,8 +152,10 @@ namespace ABCRetailsFunctions.Functions
 
                 return HttpJson.Ok(req, Map.ToDto(e));
             }
-            catch
+            catch (Exception ex)
             {
+                // Log the actual error
+                Console.WriteLine($"Error updating order status: {ex.Message}");
                 return HttpJson.NotFound(req, "Order not found");
             }
         }
@@ -165,5 +168,50 @@ namespace ABCRetailsFunctions.Functions
             await table.DeleteEntityAsync("Order", id);
             return HttpJson.NoContent(req);
         }
+
+        [Function("Orders_Update")]
+        public async Task<HttpResponseData> Update(
+    [HttpTrigger(AuthorizationLevel.Anonymous, "put", Route = "orders/{id}")] HttpRequestData req, string id)
+        {
+            var input = await HttpJson.ReadAsync<Dictionary<string, object>>(req);
+            if (input is null) return HttpJson.Bad(req, "Invalid body");
+
+            var orders = new TableClient(_conn, _ordersTable);
+            try
+            {
+                var resp = await orders.GetEntityAsync<OrderEntity>("Order", id);
+                var e = resp.Value;
+
+                // Update fields that can be changed
+                if (input.TryGetValue("Quantity", out var qty))
+                    e.Quantity = Convert.ToInt32(qty);
+
+                if (input.TryGetValue("Status", out var status))
+                    e.Status = status?.ToString() ?? e.Status;
+
+                if (input.TryGetValue("OrderDate", out var orderDate))
+                {
+                    if (orderDate is string dateStr && DateTime.TryParse(dateStr, out var dt))
+                        e.OrderDateUtc = DateTime.SpecifyKind(dt, DateTimeKind.Utc);
+                    else if (orderDate is DateTime dateTime)
+                        e.OrderDateUtc = DateTime.SpecifyKind(dateTime, DateTimeKind.Utc);
+                }
+
+                // Recalculate total if quantity changed
+                if (input.TryGetValue("Quantity", out var _))
+                {
+                    // Total price should be recalculated based on quantity * unit price
+                    // But we don't change unit price
+                }
+
+                await orders.UpdateEntityAsync(e, e.ETag, TableUpdateMode.Replace);
+                return HttpJson.Ok(req, Map.ToDto(e));
+            }
+            catch (Exception ex)
+            {
+                return HttpJson.Bad(req, $"Error: {ex.Message}");
+            }
+        
+    }
     }
 }

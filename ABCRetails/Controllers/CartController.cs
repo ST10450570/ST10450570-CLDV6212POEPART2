@@ -76,9 +76,13 @@ namespace ABCRetails.Controllers
                     return Json(new { success = false, message = "Quantity must be at least 1." });
                 }
 
+                // Add logging to debug
+                _logger.LogInformation("Attempting to add product {ProductId} to cart for user {UserId}", productId, userId);
+
                 var product = await _functionsApiService.GetProductAsync(productId);
                 if (product == null)
                 {
+                    _logger.LogWarning("Product {ProductId} not found", productId);
                     return Json(new { success = false, message = "Product not found." });
                 }
 
@@ -92,7 +96,13 @@ namespace ABCRetails.Controllers
 
                 if (existingCartItem != null)
                 {
-                    existingCartItem.Quantity += quantity;
+                    var newQuantity = existingCartItem.Quantity + quantity;
+                    if (product.StockAvailable < newQuantity)
+                    {
+                        return Json(new { success = false, message = $"Cannot add more. Available stock: {product.StockAvailable}" });
+                    }
+                    existingCartItem.Quantity = newQuantity;
+                    _logger.LogInformation("Updated existing cart item quantity to {Quantity}", newQuantity);
                 }
                 else
                 {
@@ -104,16 +114,43 @@ namespace ABCRetails.Controllers
                         AddedAt = DateTime.UtcNow
                     };
                     _authContext.Cart.Add(cartItem);
+                    _logger.LogInformation("Added new cart item");
                 }
 
                 await _authContext.SaveChangesAsync();
+                _logger.LogInformation("Cart changes saved successfully");
 
                 return Json(new { success = true, message = "Product added to cart successfully!" });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error adding product {ProductId} to cart", productId);
-                return Json(new { success = false, message = "Error adding product to cart." });
+                return Json(new { success = false, message = $"Error adding product to cart: {ex.Message}" });
+            }
+        }
+
+        // Add this new method to get cart count
+        [HttpGet]
+        public async Task<JsonResult> GetCartCount()
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null)
+            {
+                return Json(new { count = 0 });
+            }
+
+            try
+            {
+                var count = await _authContext.Cart
+                    .Where(c => c.UserId == userId.Value)
+                    .SumAsync(c => c.Quantity);
+
+                return Json(new { count = count });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting cart count");
+                return Json(new { count = 0 });
             }
         }
 
@@ -278,5 +315,12 @@ namespace ABCRetails.Controllers
             }
             return null;
         }
+    }
+
+
+    public class AddToCartRequest
+    {
+        public string productId { get; set; }
+        public int quantity { get; set; } = 1;
     }
 }

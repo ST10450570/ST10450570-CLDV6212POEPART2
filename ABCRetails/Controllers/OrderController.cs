@@ -6,6 +6,7 @@ using ABCRetails.Models.ViewModels;
 using ABCRetails.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging; // Add this using statement
 
 namespace ABCRetails.Controllers
 {
@@ -13,11 +14,16 @@ namespace ABCRetails.Controllers
     {
         private readonly IFunctionsApiService _functionsApiService;
         private readonly AuthDbContext _authContext;
+        private readonly ILogger<OrderController> _logger; // Add this field
 
-        public OrderController(IFunctionsApiService functionsApiService, AuthDbContext authContext)
+        public OrderController(
+            IFunctionsApiService functionsApiService,
+            AuthDbContext authContext,
+            ILogger<OrderController> logger) // Add this parameter
         {
             _functionsApiService = functionsApiService;
             _authContext = authContext;
+            _logger = logger; // Initialize the logger
         }
 
         [Authorize]
@@ -58,6 +64,10 @@ namespace ABCRetails.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create(OrderCreateViewModel model)
         {
+            // Remove validation for fields we don't need to validate
+            ModelState.Remove("Customers");
+            ModelState.Remove("Products");
+
             if (ModelState.IsValid)
             {
                 try
@@ -93,9 +103,11 @@ namespace ABCRetails.Controllers
                         OrderDate = utcOrderDate,
                         UnitPrice = product.Price,
                         TotalPrice = product.Price * model.Quantity,
-                        Status = model.Status,
+                        Status = model.Status, // This should now work
                         ProductImageUrl = product.ImageUrl
                     };
+
+                    _logger.LogInformation("Creating order with status: {Status}", order.Status);
 
                     await _functionsApiService.CreateOrderAsync(order);
                     TempData["Success"] = "Order created successfully!";
@@ -103,6 +115,7 @@ namespace ABCRetails.Controllers
                 }
                 catch (Exception ex)
                 {
+                    _logger.LogError(ex, "Error creating order");
                     ModelState.AddModelError("", $"Error creating order: {ex.Message}");
                 }
             }
@@ -146,12 +159,14 @@ namespace ABCRetails.Controllers
                 var success = await _functionsApiService.UpdateOrderStatusAsync(id, newStatus);
                 if (success)
                 {
+                    _logger.LogInformation("Order {OrderId} status updated to {Status}", id, newStatus);
                     return Json(new { success = true, message = "Order status updated successfully!" });
                 }
                 return Json(new { success = false, message = "Failed to update order status" });
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error updating order {OrderId} status to {Status}", id, newStatus);
                 return Json(new { success = false, message = ex.Message });
             }
         }
@@ -165,9 +180,11 @@ namespace ABCRetails.Controllers
             {
                 await _functionsApiService.DeleteOrderAsync(id);
                 TempData["Success"] = "Order deleted successfully!";
+                _logger.LogInformation("Order {OrderId} deleted successfully", id);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error deleting order {OrderId}", id);
                 TempData["Error"] = $"Error deleting order: {ex.Message}";
             }
             return RedirectToAction(nameof(Index));
@@ -193,8 +210,9 @@ namespace ABCRetails.Controllers
 
                 return Json(new { success = false });
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error getting product price for {ProductId}", productId);
                 return Json(new { success = false });
             }
         }
@@ -237,6 +255,12 @@ namespace ABCRetails.Controllers
                 return NotFound();
             }
 
+            // Remove ModelState validation for system properties
+            ModelState.Remove("Order.PartitionKey");
+            ModelState.Remove("Order.RowKey");
+            ModelState.Remove("Order.Timestamp");
+            ModelState.Remove("Order.ETag");
+
             if (ModelState.IsValid)
             {
                 try
@@ -249,19 +273,24 @@ namespace ABCRetails.Controllers
                         return RedirectToAction(nameof(Index));
                     }
 
-                    // Update the editable fields
+                    // Update ONLY the editable fields
                     originalOrder.Quantity = model.Order.Quantity;
                     originalOrder.Status = model.Order.Status;
-                    originalOrder.OrderDate = model.Order.OrderDate;
+                    originalOrder.OrderDate = DateTime.SpecifyKind(model.Order.OrderDate, DateTimeKind.Utc);
+
+                    // Recalculate total price
+                    originalOrder.TotalPrice = originalOrder.UnitPrice * model.Order.Quantity;
 
                     // Update the order using the service
                     await _functionsApiService.UpdateOrderAsync(originalOrder);
 
+                    _logger.LogInformation("Order {OrderId} updated successfully", id);
                     TempData["Success"] = "Order updated successfully!";
                     return RedirectToAction(nameof(Index));
                 }
                 catch (Exception ex)
                 {
+                    _logger.LogError(ex, "Error updating order {OrderId}", id);
                     ModelState.AddModelError("", $"Error updating order: {ex.Message}");
                 }
             }
@@ -283,6 +312,7 @@ namespace ABCRetails.Controllers
                 var success = await _functionsApiService.UpdateOrderStatusAsync(id, "PROCESSED");
                 if (success)
                 {
+                    _logger.LogInformation("Order {OrderId} marked as PROCESSED", id);
                     TempData["Success"] = "Order marked as PROCESSED successfully!";
                 }
                 else
@@ -292,6 +322,7 @@ namespace ABCRetails.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error processing order {OrderId}", id);
                 TempData["Error"] = $"Error processing order: {ex.Message}";
             }
             return RedirectToAction(nameof(Index));

@@ -504,7 +504,7 @@
                 });
             });
 
-            // Update cart count
+            // Update cart count on page load
             updateCartCount();
         });
 
@@ -516,6 +516,12 @@
                     const cartBadge = document.getElementById('cartCount');
                     if (cartBadge) {
                         cartBadge.textContent = data.count;
+                        // Show badge only if count > 0
+                        if (data.count === 0) {
+                            cartBadge.style.display = 'none';
+                        } else {
+                            cartBadge.style.display = 'inline';
+                        }
                     }
                 }
             } catch (error) {

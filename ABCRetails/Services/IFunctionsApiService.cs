@@ -397,10 +397,21 @@ namespace ABCRetails.Services
         {
             try
             {
-                var orderCreate = new OrderCreateDto(order.CustomerId, order.ProductId, order.Quantity);
+                // The API expects only CustomerId, ProductId, and Quantity
+                var orderCreate = new
+                {
+                    CustomerId = order.CustomerId,
+                    ProductId = order.ProductId,
+                    Quantity = order.Quantity
+                };
+
+                _logger.LogInformation("Creating order: CustomerId={CustomerId}, ProductId={ProductId}, Quantity={Quantity}",
+                    order.CustomerId, order.ProductId, order.Quantity);
+
                 var content = new StringContent(JsonSerializer.Serialize(orderCreate), Encoding.UTF8, "application/json");
 
                 var response = await _httpClient.PostAsync("api/orders", content);
+
                 if (response.IsSuccessStatusCode)
                 {
                     var responseContent = await response.Content.ReadAsStringAsync();
@@ -408,7 +419,10 @@ namespace ABCRetails.Services
                     var createdDto = JsonSerializer.Deserialize<OrderDto>(responseContent, options);
                     return MapToOrder(createdDto!);
                 }
-                throw new Exception($"Failed to create order: {response.StatusCode}");
+
+                var errorContent = await response.Content.ReadAsStringAsync();
+                _logger.LogError("Failed to create order: {StatusCode} - {Error}", response.StatusCode, errorContent);
+                throw new Exception($"Failed to create order: {response.StatusCode} - {errorContent}");
             }
             catch (Exception ex)
             {
@@ -421,12 +435,24 @@ namespace ABCRetails.Services
         {
             try
             {
-                // For order updates, we'll need to implement a proper update endpoint in Functions
-                // For now, we'll update status only
-                var statusUpdate = new { Status = order.Status };
-                var content = new StringContent(JsonSerializer.Serialize(statusUpdate), Encoding.UTF8, "application/json");
+                // Create a proper update DTO with all order fields
+                var orderUpdate = new
+                {
+                    CustomerId = order.CustomerId,
+                    ProductId = order.ProductId,
+                    ProductName = order.ProductName,
+                    ProductImageUrl = order.ProductImageUrl,
+                    Quantity = order.Quantity,
+                    UnitPrice = order.UnitPrice,
+                    TotalPrice = order.TotalPrice,
+                    OrderDate = order.OrderDate,
+                    Status = order.Status
+                };
 
-                var response = await _httpClient.PatchAsync($"api/orders/{order.RowKey}/status", content);
+                var content = new StringContent(JsonSerializer.Serialize(orderUpdate), Encoding.UTF8, "application/json");
+
+                var response = await _httpClient.PutAsync($"api/orders/{order.RowKey}", content);
+
                 if (response.IsSuccessStatusCode)
                 {
                     var responseContent = await response.Content.ReadAsStringAsync();
@@ -434,7 +460,9 @@ namespace ABCRetails.Services
                     var updatedDto = JsonSerializer.Deserialize<OrderDto>(responseContent, options);
                     return MapToOrder(updatedDto!);
                 }
-                throw new Exception($"Failed to update order: {response.StatusCode}");
+
+                var errorContent = await response.Content.ReadAsStringAsync();
+                throw new Exception($"Failed to update order: {response.StatusCode} - {errorContent}");
             }
             catch (Exception ex)
             {

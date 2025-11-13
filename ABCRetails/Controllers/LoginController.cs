@@ -133,50 +133,60 @@ namespace ABCRetails.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Register(User user, string password)
         {
-            if (ModelState.IsValid)
+            // Remove this validation - password is not part of User model
+            if (!ModelState.IsValid)
             {
-                try
+                // Check only for required User fields
+                if (string.IsNullOrWhiteSpace(user.Username) ||
+                    string.IsNullOrWhiteSpace(user.Email) ||
+                    string.IsNullOrWhiteSpace(password))
                 {
-                    // Check if username already exists
-                    if (await _context.Users.AnyAsync(u => u.Username == user.Username))
-                    {
-                        ModelState.AddModelError("Username", "Username already exists.");
-                        return View(user);
-                    }
-
-                    // Check if email already exists
-                    if (await _context.Users.AnyAsync(u => u.Email == user.Email))
-                    {
-                        ModelState.AddModelError("Email", "Email already exists.");
-                        return View(user);
-                    }
-
-                    // Force Customer role for new registrations (security measure)
-                    user.Role = "Customer";
-                    user.PasswordHash = HashPassword(password);
-                    user.CreatedAt = DateTime.UtcNow;
-
-                    _context.Users.Add(user);
-                    await _context.SaveChangesAsync();
-
-                    _logger.LogInformation("New user registered: {Username}", user.Username);
-
-                    // Auto-login after registration
-                    var loginModel = new LoginViewModel
-                    {
-                        Username = user.Username,
-                        Password = password,
-                        RememberMe = false
-                    };
-
-                    // Call login directly instead of redirecting to Index action
-                    return await LoginAfterRegistration(loginModel);
+                    ModelState.AddModelError("", "Username, Email and Password are required.");
+                    return View(user);
                 }
-                catch (Exception ex)
+            }
+
+            try
+            {
+                // Check if username already exists
+                if (await _context.Users.AnyAsync(u => u.Username == user.Username))
                 {
-                    _logger.LogError(ex, "Error registering user {Username}", user.Username);
-                    ModelState.AddModelError("", $"An error occurred during registration: {ex.Message}");
+                    ModelState.AddModelError("Username", "Username already exists.");
+                    return View(user);
                 }
+
+                // Check if email already exists
+                if (await _context.Users.AnyAsync(u => u.Email == user.Email))
+                {
+                    ModelState.AddModelError("Email", "Email already exists.");
+                    return View(user);
+                }
+
+                // Force Customer role for new registrations (security measure)
+                user.Role = "Customer";
+                user.PasswordHash = HashPassword(password);
+                user.CreatedAt = DateTime.UtcNow;
+
+                _context.Users.Add(user);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("New user registered: {Username}", user.Username);
+
+                // Auto-login after registration
+                var loginModel = new LoginViewModel
+                {
+                    Username = user.Username,
+                    Password = password,
+                    RememberMe = false
+                };
+
+                // Call login directly instead of redirecting to Index action
+                return await LoginAfterRegistration(loginModel);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error registering user {Username}", user.Username);
+                ModelState.AddModelError("", $"An error occurred during registration: {ex.Message}");
             }
             return View(user);
         }

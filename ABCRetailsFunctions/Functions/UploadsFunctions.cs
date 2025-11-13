@@ -69,4 +69,145 @@ public class UploadsFunctions
 
         return HttpJson.Ok(req, new { fileName = blobName, blobUrl = blob.Uri.ToString() });
     }
+
+    [Function("Uploads_List")]
+    public async Task<HttpResponseData> List(
+    [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "uploads")] HttpRequestData req)
+    {
+        try
+        {
+            var share = new ShareClient(_conn, _share);
+            await share.CreateIfNotExistsAsync();
+            var root = share.GetRootDirectoryClient();
+            var dir = root.GetSubdirectoryClient(_shareDir);
+
+            var files = new List<object>();
+
+            try
+            {
+                await foreach (var item in dir.GetFilesAndDirectoriesAsync())
+                {
+                    if (!item.IsDirectory && item.Name.EndsWith(".txt"))
+                    {
+                        var fileClient = dir.GetFileClient(item.Name);
+                        var props = await fileClient.GetPropertiesAsync();
+
+                        // Read metadata
+                        var download = await fileClient.DownloadAsync();
+                        using var reader = new StreamReader(download.Value.Content);
+                        var content = await reader.ReadToEndAsync();
+
+                        // Parse metadata
+                        var lines = content.Split('\n');
+                        var metadata = new Dictionary<string, string>();
+                        foreach (var line in lines)
+                        {
+                            var parts = line.Split(':', 2);
+                            if (parts.Length == 2)
+                                metadata[parts[0].Trim()] = parts[1].Trim();
+                        }
+
+                        var fileName = item.Name.Replace(".txt", "");
+                        files.Add(new
+                        {
+                            FileName = fileName,
+                            CustomerName = metadata.GetValueOrDefault("CustomerName", "Unknown"),
+                            OrderId = metadata.GetValueOrDefault("OrderId", "N/A"),
+                            UploadDate = metadata.TryGetValue("UploadedAtUtc", out var date)
+                                ? DateTime.Parse(date)
+                                : props.Value.LastModified.DateTime,
+                            FileSize = props.Value.ContentLength,
+                            FileType = "application/octet-stream",
+                            Status = "Pending",
+                            BlobUrl = metadata.GetValueOrDefault("BlobUrl", "")
+                        });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Directory might not exist yet
+                return HttpJson.Ok(req, new List<object>());
+            }
+
+            return HttpJson.Ok(req, files);
+        }
+        catch (Exception ex)
+        {
+            return HttpJson.Bad(req, $"Error: {ex.Message}");
+        }
+    }
+
+    [Function("Uploads_Get")]
+    public async Task<HttpResponseData> Get(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "uploads/{fileName}")] HttpRequestData req, string fileName)
+    {
+        try
+        {
+            var share = new ShareClient(_conn, _share);
+            var root = share.GetRootDirectoryClient();
+            var dir = root.GetSubdirectoryClient(_shareDir);
+            var fileClient = dir.GetFileClient(fileName + ".txt");
+
+            var props = await fileClient.GetPropertiesAsync();
+            var download = await fileClient.DownloadAsync();
+            using var reader = new StreamReader(download.Value.Content);
+            var content = await reader.ReadToEndAsync();
+
+            var lines = content.Split('\n');
+            var metadata = new Dictionary<string, string>();
+            foreach (var line in lines)
+            {
+                var parts = line.Split(':', 2);
+                if (parts.Length == 2)
+                    metadata[parts[0].Trim()] = parts[1].Trim();
+            }
+
+            var file = new
+            {
+                FileName = fileName,
+                CustomerName = metadata.GetValueOrDefault("CustomerName", "Unknown"),
+                OrderId = metadata.GetValueOrDefault("OrderId", "N/A"),
+                UploadDate = metadata.TryGetValue("UploadedAtUtc", out var date)
+                    ? DateTime.Parse(date)
+                    : props.Value.LastModified.DateTime,
+                FileSize = props.Value.ContentLength,
+                FileType = "application/octet-stream",
+                Status = "Pending",
+                BlobUrl = metadata.GetValueOrDefault("BlobUrl", "")
+            };
+
+            return HttpJson.Ok(req, file);
+        }
+        catch
+        {
+            return HttpJson.NotFound(req, "File not found");
+        }
+    }
+
+    [Function("Uploads_Delete")]
+    public async Task<HttpResponseData> Delete(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "uploads/{fileName}")] HttpRequestData req, string fileName)
+    {
+        try
+        {
+            // Delete from file share
+            var share = new ShareClient(_conn, _share);
+            var root = share.GetRootDirectoryClient();
+            var dir = root.GetSubdirectoryClient(_shareDir);
+            var fileClient = dir.GetFileClient(fileName + ".txt");
+            await fileClient.DeleteIfExistsAsync();
+
+            // Delete from blob storage
+            var container = new BlobContainerClient(_conn, _proofs);
+            var blob = container.GetBlobClient(fileName);
+            await blob.DeleteIfExistsAsync();
+
+            return HttpJson.Ok(req, new { success = true });
+        }
+        catch (Exception ex)
+        {
+            return HttpJson.Bad(req, $"Error: {ex.Message}");
+        }
+    }
 }
