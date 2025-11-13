@@ -5,9 +5,15 @@
 <div class="row">
     <div class="col-12">
         <div class="page-header d-flex align-items-center justify-content-between mb-4">
-            <h1 class="mb-0">
-                <i class="fas fa-tachometer-alt me-2 text-primary"></i>@ViewData["Title"]
-            </h1>
+            <div>
+                <h1 class="mb-0">
+                    <i class="fas fa-tachometer-alt me-2 text-primary"></i>@ViewData["Title"]
+                </h1>
+                @if (ViewBag.WelcomeMessage != null)
+                {
+                    <p class="text-muted mb-0">@ViewBag.WelcomeMessage</p>
+                }
+            </div>
             <span class="badge bg-success fs-6">
                 <i class="fas fa-user me-1"></i>Customer
             </span>
@@ -164,7 +170,7 @@
                                         <h6 class="mb-1">@product.ProductName</h6>
                                         <small class="text-muted">@product.Price.ToString("C")</small>
                                     </div>
-                                    <button class="btn btn-primary btn-sm" onclick="addToCart('@product.ProductId')">
+                                    <button class="btn btn-primary btn-sm add-to-cart-featured" data-product-id="@product.ProductId">
                                         <i class="fas fa-cart-plus"></i>
                                     </button>
                                 </div>
@@ -262,6 +268,15 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             loadCustomerDashboardData();
+
+            // Add event listeners for featured products add to cart buttons
+            const featuredCartButtons = document.querySelectorAll('.add-to-cart-featured');
+            featuredCartButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const productId = this.getAttribute('data-product-id');
+                    addToCart(productId);
+                });
+            });
         });
 
         async function loadCustomerDashboardData() {
@@ -343,6 +358,7 @@
                 const result = await response.json();
                 if (result.success) {
                     showToast('Product added to cart!', 'success');
+                    updateCartCount();
                 } else {
                     showToast(result.message, 'error');
                 }
@@ -370,6 +386,15 @@
                     toast.parentNode.removeChild(toast);
                 }
             }, 3000);
+        }
+
+        function updateCartCount() {
+            // Update cart count in navbar
+            const cartBadge = document.getElementById('cartCount');
+            if (cartBadge) {
+                const currentCount = parseInt(cartBadge.textContent) || 0;
+                cartBadge.textContent = currentCount + 1;
+            }
         }
 
         function displayErrorMessages() {

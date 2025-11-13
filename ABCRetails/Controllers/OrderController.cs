@@ -200,30 +200,6 @@ namespace ABCRetails.Controllers
         }
 
         [HttpGet]
-        [Authorize]
-        public async Task<JsonResult> GetProductImage(string productId)
-        {
-            try
-            {
-                var product = await _functionsApiService.GetProductAsync(productId);
-                if (product != null && !string.IsNullOrEmpty(product.ImageUrl))
-                {
-                    return Json(new
-                    {
-                        success = true,
-                        imageUrl = product.ImageUrl
-                    });
-                }
-
-                return Json(new { success = false });
-            }
-            catch
-            {
-                return Json(new { success = false });
-            }
-        }
-
-        [HttpGet]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Edit(string id)
         {
@@ -273,15 +249,12 @@ namespace ABCRetails.Controllers
                         return RedirectToAction(nameof(Index));
                     }
 
-                    // Update only the fields that should be editable
+                    // Update the editable fields
                     originalOrder.Quantity = model.Order.Quantity;
                     originalOrder.Status = model.Order.Status;
                     originalOrder.OrderDate = model.Order.OrderDate;
 
-                    // Preserve system properties
-                    originalOrder.PartitionKey = "Order";
-                    originalOrder.RowKey = model.Id;
-
+                    // Update the order using the service
                     await _functionsApiService.UpdateOrderAsync(originalOrder);
 
                     TempData["Success"] = "Order updated successfully!";

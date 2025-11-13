@@ -104,6 +104,7 @@ namespace ABCRetails.Controllers
 
                 ViewBag.FeaturedProducts = featuredProducts;
                 ViewBag.TotalProducts = products.Count;
+                ViewBag.WelcomeMessage = $"Welcome back, {User.FindFirst(ClaimTypes.Name)?.Value}!";
 
                 return View();
             }
@@ -112,6 +113,7 @@ namespace ABCRetails.Controllers
                 _logger.LogError(ex, "Error loading customer dashboard");
                 ViewBag.FeaturedProducts = new List<Product>();
                 ViewBag.TotalProducts = 0;
+                ViewBag.WelcomeMessage = $"Welcome back, {User.FindFirst(ClaimTypes.Name)?.Value}!";
                 return View();
             }
         }
@@ -246,12 +248,10 @@ namespace ABCRetails.Controllers
                     return Json(new { success = false, message = "Product not found." });
                 }
 
-                // Since we can't directly call CartController from here, return the product info
-                // and let the frontend handle the actual cart addition
                 return Json(new
                 {
                     success = true,
-                    message = "Product found. You can add this to your cart.",
+                    message = "Product found.",
                     productName = product.ProductName,
                     price = product.Price
                 });

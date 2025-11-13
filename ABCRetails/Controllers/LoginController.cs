@@ -122,7 +122,11 @@ namespace ABCRetails.Controllers
         [HttpGet]
         public IActionResult Register()
         {
-            return View();
+            if (User.Identity?.IsAuthenticated == true)
+            {
+                return RedirectToAction("Index", "Home");
+            }
+            return View(new User());
         }
 
         [HttpPost]
@@ -165,7 +169,8 @@ namespace ABCRetails.Controllers
                         RememberMe = false
                     };
 
-                    return await Index(loginModel);
+                    // Call login directly instead of redirecting to Index action
+                    return await LoginAfterRegistration(loginModel);
                 }
                 catch (Exception ex)
                 {
@@ -174,6 +179,59 @@ namespace ABCRetails.Controllers
                 }
             }
             return View(user);
+        }
+
+        private async Task<IActionResult> LoginAfterRegistration(LoginViewModel model)
+        {
+            try
+            {
+                var user = await _context.Users
+                    .FirstOrDefaultAsync(u => u.Username == model.Username);
+
+                if (user != null && VerifyPassword(model.Password, user.PasswordHash))
+                {
+                    var claims = new List<Claim>
+                    {
+                        new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                        new Claim(ClaimTypes.Name, user.Username),
+                        new Claim(ClaimTypes.Email, user.Email),
+                        new Claim(ClaimTypes.Role, user.Role)
+                    };
+
+                    var claimsIdentity = new ClaimsIdentity(
+                        claims, CookieAuthenticationDefaults.AuthenticationScheme);
+
+                    var authProperties = new AuthenticationProperties
+                    {
+                        IsPersistent = model.RememberMe,
+                        ExpiresUtc = DateTimeOffset.UtcNow.AddHours(2)
+                    };
+
+                    await HttpContext.SignInAsync(
+                        CookieAuthenticationDefaults.AuthenticationScheme,
+                        new ClaimsPrincipal(claimsIdentity),
+                        authProperties);
+
+                    _logger.LogInformation("User {Username} auto-logged in after registration.", user.Username);
+
+                    // Redirect based on role
+                    if (user.Role == "Admin")
+                    {
+                        return RedirectToAction("AdminDashboard", "Home");
+                    }
+                    else
+                    {
+                        return RedirectToAction("CustomerDashboard", "Home");
+                    }
+                }
+
+                return RedirectToAction("Index");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during auto-login after registration for user {Username}", model.Username);
+                return RedirectToAction("Index");
+            }
         }
     }
 }

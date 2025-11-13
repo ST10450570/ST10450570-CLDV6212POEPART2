@@ -12,11 +12,11 @@
                 </h1>
                 <p class="lead mb-4">Your one-stop shop for the best deals and latest products</p>
                 <div class="d-flex flex-wrap gap-3">
-                    <a asp-controller="Customer" asp-action="Index" class="btn btn-light btn-lg">
-                        <i class="fas fa-users me-2"></i>Manage Customers
+                    <a asp-controller="Login" asp-action="Index" class="btn btn-light btn-lg">
+                        <i class="fas fa-sign-in-alt me-2"></i>Login to Shop
                     </a>
-                    <a asp-controller="Product" asp-action="Index" class="btn btn-outline-light btn-lg">
-                        <i class="fas fa-box me-2"></i>Browse Products
+                    <a asp-controller="Login" asp-action="Register" class="btn btn-outline-light btn-lg">
+                        <i class="fas fa-user-plus me-2"></i>Register
                     </a>
                 </div>
             </div>
@@ -44,8 +44,8 @@
                     </div>
                 </div>
                 <div class="card-footer bg-primary-dark">
-                    <a asp-controller="Customer" asp-action="Index" class="text-white text-decoration-none">
-                        View All <i class="fas fa-arrow-right ms-1"></i>
+                    <a asp-controller="Login" asp-action="Index" class="text-white text-decoration-none">
+                        Login to View <i class="fas fa-arrow-right ms-1"></i>
                     </a>
                 </div>
             </div>
@@ -65,8 +65,8 @@
                     </div>
                 </div>
                 <div class="card-footer bg-success-dark">
-                    <a asp-controller="Product" asp-action="Index" class="text-white text-decoration-none">
-                        View All <i class="fas fa-arrow-right ms-1"></i>
+                    <a asp-controller="Login" asp-action="Index" class="text-white text-decoration-none">
+                        Login to Browse <i class="fas fa-arrow-right ms-1"></i>
                     </a>
                 </div>
             </div>
@@ -86,8 +86,8 @@
                     </div>
                 </div>
                 <div class="card-footer bg-warning-dark">
-                    <a asp-controller="Order" asp-action="Index" class="text-dark text-decoration-none">
-                        View All <i class="fas fa-arrow-right ms-1"></i>
+                    <a asp-controller="Login" asp-action="Index" class="text-dark text-decoration-none">
+                        Login to Order <i class="fas fa-arrow-right ms-1"></i>
                     </a>
                 </div>
             </div>
@@ -104,38 +104,38 @@
             </div>
             <div class="row">
                 <div class="col-xl-3 col-md-6 mb-3">
-                    <a asp-controller="Customer" asp-action="Create" class="card action-card h-100 text-decoration-none">
+                    <a asp-controller="Login" asp-action="Index" class="card action-card h-100 text-decoration-none">
                         <div class="card-body text-center">
-                            <i class="fas fa-user-plus fa-3x text-primary mb-3"></i>
-                            <h5 class="card-title">Add Customer</h5>
-                            <p class="card-text text-muted small">Create a new customer profile</p>
+                            <i class="fas fa-sign-in-alt fa-3x text-primary mb-3"></i>
+                            <h5 class="card-title">Login</h5>
+                            <p class="card-text text-muted small">Access your account</p>
                         </div>
                     </a>
                 </div>
                 <div class="col-xl-3 col-md-6 mb-3">
-                    <a asp-controller="Product" asp-action="Create" class="card action-card h-100 text-decoration-none">
+                    <a asp-controller="Login" asp-action="Register" class="card action-card h-100 text-decoration-none">
                         <div class="card-body text-center">
-                            <i class="fas fa-plus-square fa-3x text-success mb-3"></i>
-                            <h5 class="card-title">Add Product</h5>
-                            <p class="card-text text-muted small">Add a new product to inventory</p>
+                            <i class="fas fa-user-plus fa-3x text-success mb-3"></i>
+                            <h5 class="card-title">Register</h5>
+                            <p class="card-text text-muted small">Create new account</p>
                         </div>
                     </a>
                 </div>
                 <div class="col-xl-3 col-md-6 mb-3">
-                    <a asp-controller="Order" asp-action="Create" class="card action-card h-100 text-decoration-none">
+                    <a asp-controller="Home" asp-action="Contact" class="card action-card h-100 text-decoration-none">
                         <div class="card-body text-center">
-                            <i class="fas fa-cart-plus fa-3x text-warning mb-3"></i>
-                            <h5 class="card-title">Create Order</h5>
-                            <p class="card-text text-muted small">Process a new customer order</p>
+                            <i class="fas fa-phone-alt fa-3x text-warning mb-3"></i>
+                            <h5 class="card-title">Contact Us</h5>
+                            <p class="card-text text-muted small">Get in touch</p>
                         </div>
                     </a>
                 </div>
                 <div class="col-xl-3 col-md-6 mb-3">
-                    <a asp-controller="Upload" asp-action="Index" class="card action-card h-100 text-decoration-none">
+                    <a asp-controller="Home" asp-action="Privacy" class="card action-card h-100 text-decoration-none">
                         <div class="card-body text-center">
-                            <i class="fas fa-file-upload fa-3x text-info mb-3"></i>
-                            <h5 class="card-title">Upload Files</h5>
-                            <p class="card-text text-muted small">Upload payment proofs</p>
+                            <i class="fas fa-shield-alt fa-3x text-info mb-3"></i>
+                            <h5 class="card-title">Privacy</h5>
+                            <p class="card-text text-muted small">Our policies</p>
                         </div>
                     </a>
                 </div>
@@ -150,8 +150,8 @@
                 <h3 class="text-primary">
                     <i class="fas fa-star text-warning me-2"></i>Featured Products
                 </h3>
-                <a asp-controller="Product" asp-action="Index" class="btn btn-outline-primary">
-                    View All Products <i class="fas fa-arrow-right ms-1"></i>
+                <a asp-controller="Login" asp-action="Index" class="btn btn-outline-primary">
+                    Login to View All <i class="fas fa-arrow-right ms-1"></i>
                 </a>
             </div>
 
@@ -187,19 +187,9 @@
                                     </div>
                                 </div>
                                 <div class="card-footer bg-transparent">
-                                    <button class="btn btn-primary w-100 add-to-cart-btn"
-                                            data-product-id="@product.ProductId"
-                                            @(product.StockAvailable <= 0 ? "disabled" : "")>
-                                        <i class="fas fa-cart-plus me-2"></i>
-                                        @if (product.StockAvailable <= 0)
-                                        {
-                                            <span>Out of Stock</span>
-                                        }
-                                        else
-                                        {
-                                            <span>Add to Cart</span>
-                                        }
-                                    </button>
+                                    <a asp-controller="Login" asp-action="Index" class="btn btn-primary w-100">
+                                        <i class="fas fa-sign-in-alt me-2"></i>Login to Add to Cart
+                                    </a>
                                 </div>
                             </div>
                         </div>
@@ -211,10 +201,7 @@
                 <div class="text-center py-5">
                     <i class="fas fa-box fa-4x text-muted mb-3"></i>
                     <h4 class="text-muted">No Featured Products</h4>
-                    <p class="text-muted">Add products to see them featured here.</p>
-                    <a asp-controller="Product" asp-action="Create" class="btn btn-primary">
-                        <i class="fas fa-plus-circle me-2"></i>Add Product
-                    </a>
+                    <p class="text-muted">Check back later for new products.</p>
                 </div>
             }
         </div>
@@ -309,98 +296,5 @@
             background-color: #f8f9fa; /* neutral background behind transparent/odd aspect images */
             padding: 5px; /* keeps image from sticking to the edges */
         }
-
-        .add-to-cart-btn:disabled {
-            background-color: #6c757d;
-            border-color: #6c757d;
-            cursor: not-allowed;
-        }
     </style>
-}
-
-@section Scripts {
-    <script>
-        // Add to cart functionality
-        async function addToCart(productId) {
-            try {
-                // First verify the product exists
-                const verifyResponse = await fetch('@Url.Action("AddToCartFromHome", "Home")', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
-                    },
-                    body: JSON.stringify({ productId: productId })
-                });
-
-                const verifyResult = await verifyResponse.json();
-
-                if (verifyResult.success) {
-                    // Now add to cart
-                    const response = await fetch('@Url.Action("AddToCart", "Cart")', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
-                        },
-                        body: JSON.stringify({ productId: productId, quantity: 1 })
-                    });
-
-                    const result = await response.json();
-                    if (result.success) {
-                        showToast('Product added to cart!', 'success');
-                        // Update cart count
-                        updateCartCount();
-                    } else {
-                        showToast(result.message, 'error');
-                    }
-                } else {
-                    showToast(verifyResult.message, 'error');
-                }
-            } catch (error) {
-                console.error('Error adding to cart:', error);
-                showToast('Error adding product to cart.', 'error');
-            }
-        }
-
-        function updateCartCount() {
-            // This would typically fetch the actual cart count from your API
-            // For now, we'll increment a counter
-            const cartBadge = document.getElementById('cartCount');
-            if (cartBadge) {
-                const currentCount = parseInt(cartBadge.textContent) || 0;
-                cartBadge.textContent = currentCount + 1;
-            }
-        }
-
-        function showToast(message, type) {
-            const toast = document.createElement('div');
-            toast.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
-            toast.style.cssText = 'top: 20px; right: 20px; z-index: 1050; min-width: 300px;';
-            toast.innerHTML = `
-                <i class="fas fa-${type === 'success' ? 'check' : 'exclamation'}-circle me-2"></i>
-                ${message}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            `;
-            document.body.appendChild(toast);
-
-            setTimeout(() => {
-                if (toast.parentNode) {
-                    toast.parentNode.removeChild(toast);
-                }
-            }, 3000);
-        }
-
-        // Add event listeners to all "Add to Cart" buttons
-        document.addEventListener('DOMContentLoaded', function() {
-            const addToCartButtons = document.querySelectorAll('.add-to-cart-btn');
-
-            addToCartButtons.forEach(button => {
-                button.addEventListener('click', function() {
-                    const productId = this.getAttribute('data-product-id');
-                    addToCart(productId);
-                });
-            });
-        });
-    </script>
 }

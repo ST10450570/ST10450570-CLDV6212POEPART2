@@ -15,4 +15,6 @@ namespace ABCRetails.Models
         public string? CustomerName { get; set; }
     }
 
+
+    
 }

@@ -1,0 +1,477 @@
+﻿@model List<ABCRetails.Services.UploadedFile>
+@{
+    ViewData["Title"] = "Uploaded Files";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="display-6 text-primary">
+        <i class="fas fa-cloud-upload-alt me-2"></i>@ViewData["Title"]
+    </h1>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-header bg-light">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-file-upload me-2"></i>Customer Uploaded Files
+        </h5>
+    </div>
+    <div class="card-body">
+        <!-- File Upload Statistics -->
+        <div class="row mb-4">
+            <div class="col-md-3 mb-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body text-center">
+                        <i class="fas fa-file fa-2x mb-2"></i>
+                        <h4 class="mb-1">@ViewBag.TotalFiles</h4>
+                        <small>Total Files</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body text-center">
+                        <i class="fas fa-check-circle fa-2x mb-2"></i>
+                        <h4 class="mb-1">@ViewBag.VerifiedCount</h4>
+                        <small>Verified</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card bg-warning text-white">
+                    <div class="card-body text-center">
+                        <i class="fas fa-clock fa-2x mb-2"></i>
+                        <h4 class="mb-1">@ViewBag.PendingCount</h4>
+                        <small>Pending Review</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card bg-danger text-white">
+                    <div class="card-body text-center">
+                        <i class="fas fa-times-circle fa-2x mb-2"></i>
+                        <h4 class="mb-1">@ViewBag.RejectedCount</h4>
+                        <small>Rejected</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search and Filter -->
+        <form method="get" class="row mb-4">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <input type="text" name="searchTerm" class="form-control"
+                           placeholder="Search files by customer name, order ID, or file name..."
+                           value="@ViewBag.SearchTerm">
+                    <button class="btn btn-primary" type="submit">
+                        <i class="fas fa-search me-1"></i>Search
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select name="statusFilter" class="form-select" onchange="this.form.submit()">
+                    <option value="">All Status</option>
+                    <option value="verified" selected="@(ViewBag.StatusFilter == "verified")">Verified</option>
+                    <option value="pending" selected="@(ViewBag.StatusFilter == "pending")">Pending Review</option>
+                    <option value="rejected" selected="@(ViewBag.StatusFilter == "rejected")">Rejected</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <a asp-action="UploadedFiles" class="btn btn-outline-secondary w-100">
+                    <i class="fas fa-refresh me-1"></i>Clear Filters
+                </a>
+            </div>
+        </form>
+
+        @if (Model.Any())
+        {
+            <!-- Files Table -->
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>File Name</th>
+                            <th>Customer</th>
+                            <th>Order ID</th>
+                            <th>Upload Date</th>
+                            <th>File Size</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var file in Model)
+                        {
+                            <tr>
+                                <td>
+                                    @{
+                                        var fileIcon = file.FileName.ToLower() switch
+                                        {
+                                            string name when name.EndsWith(".pdf") => "fa-file-pdf text-danger",
+                                            string name when name.EndsWith(".jpg") || name.EndsWith(".jpeg") || name.EndsWith(".png") => "fa-file-image text-primary",
+                                            string name when name.EndsWith(".doc") || name.EndsWith(".docx") => "fa-file-word text-info",
+                                            _ => "fa-file text-secondary"
+                                        };
+                                    }
+                                    <i class="fas @fileIcon me-2"></i>
+                                    @file.FileName
+                                </td>
+                                <td>@file.CustomerName</td>
+                                <td>@file.OrderId</td>
+                                <td>@file.UploadDate.ToString("MMM dd, yyyy HH:mm")</td>
+                                <td>@FormatFileSize(file.FileSize)</td>
+                                <td>
+                                    @{
+                                        var statusClass = file.Status switch
+                                        {
+                                            "Verified" => "bg-success",
+                                            "Rejected" => "bg-danger",
+                                            _ => "bg-warning"
+                                        };
+                                    }
+                                    <span class="badge @statusClass">@file.Status</span>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        @if (!string.IsNullOrEmpty(file.BlobUrl))
+                                        {
+                                            <a href="@file.BlobUrl" target="_blank" class="btn btn-outline-primary" title="Download" download="@file.FileName">
+                                                <i class="fas fa-download"></i>
+                                            </a>
+                                        }
+                                        <button class="btn btn-outline-info view-file-details"
+                                                title="View Details"
+                                                data-file-name="@file.FileName">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        @if (file.Status != "Verified")
+                                        {
+                                            <button class="btn btn-outline-success verify-file"
+                                                    title="Verify"
+                                                    data-file-name="@file.FileName">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                        }
+                                        @if (file.Status != "Rejected")
+                                        {
+                                            <button class="btn btn-outline-danger reject-file"
+                                                    title="Reject"
+                                                    data-file-name="@file.FileName">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        }
+                                        <button class="btn btn-outline-secondary delete-file"
+                                                title="Delete"
+                                                data-file-name="@file.FileName">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-5">
+                <i class="fas fa-folder-open fa-4x text-muted mb-3"></i>
+                <h4 class="text-muted">No Files Found</h4>
+                <p class="text-muted">@(!string.IsNullOrEmpty(ViewBag.SearchTerm) ? "No files match your search criteria." : "No files have been uploaded yet.")</p>
+                @if (!string.IsNullOrEmpty(ViewBag.SearchTerm))
+                {
+                    <a asp-action="UploadedFiles" class="btn btn-primary mt-2">
+                        <i class="fas fa-refresh me-2"></i>Clear Search
+                    </a>
+                }
+            </div>
+        }
+    </div>
+
+    @if (Model.Any())
+    {
+        <div class="card-footer bg-light">
+            <div class="row">
+                <div class="col-md-6">
+                    <small class="text-muted">
+                        Showing @Model.Count file(s) • Last updated: @DateTime.Now.ToString("MMM dd, yyyy hh:mm tt")
+                    </small>
+                </div>
+                <div class="col-md-6 text-end">
+                    <button class="btn btn-outline-primary btn-sm" onclick="location.reload()">
+                        <i class="fas fa-sync-alt me-1"></i>Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- File Details Modal -->
+<div class="modal fade" id="fileDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">File Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="fileDetailsContent">
+                <!-- Content will be loaded via JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@functions {
+    public string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        int order = 0;
+        double len = bytes;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+}
+
+@section Styles {
+    <style>
+        .card {
+            border: none;
+            border-radius: 1rem;
+        }
+
+        .table th {
+            border-top: none;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+        }
+
+        .table td {
+            vertical-align: middle;
+        }
+
+        .btn-group .btn {
+            border-radius: 0.375rem;
+            margin: 0 2px;
+        }
+
+        .table-hover tbody tr:hover {
+            background-color: rgba(0, 123, 255, 0.05);
+            transform: translateY(-1px);
+            transition: all 0.2s ease;
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // View file details
+            document.querySelectorAll('.view-file-details').forEach(button => {
+                button.addEventListener('click', function() {
+                    const fileName = this.getAttribute('data-file-name');
+                    loadFileDetails(fileName);
+                });
+            });
+
+            // Verify file
+            document.querySelectorAll('.verify-file').forEach(button => {
+                button.addEventListener('click', function() {
+                    const fileName = this.getAttribute('data-file-name');
+                    updateFileStatus(fileName, 'Verified');
+                });
+            });
+
+            // Reject file
+            document.querySelectorAll('.reject-file').forEach(button => {
+                button.addEventListener('click', function() {
+                    const fileName = this.getAttribute('data-file-name');
+                    updateFileStatus(fileName, 'Rejected');
+                });
+            });
+
+            // Delete file
+            document.querySelectorAll('.delete-file').forEach(button => {
+                button.addEventListener('click', function() {
+                    const fileName = this.getAttribute('data-file-name');
+                    deleteFile(fileName);
+                });
+            });
+        });
+
+        async function loadFileDetails(fileName) {
+            try {
+                const response = await fetch('@Url.Action("GetFileDetails", "Upload")?fileName=' + encodeURIComponent(fileName));
+                const result = await response.json();
+
+                if (result.success) {
+                    const file = result.file;
+                    const modalContent = document.getElementById('fileDetailsContent');
+
+                    modalContent.innerHTML = `
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>File Information</h6>
+                                <table class="table table-sm">
+                                    <tr>
+                                        <td><strong>File Name:</strong></td>
+                                        <td>${file.fileName}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Customer:</strong></td>
+                                        <td>${file.customerName}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Order ID:</strong></td>
+                                        <td>${file.orderId}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Upload Date:</strong></td>
+                                        <td>${new Date(file.uploadDate).toLocaleString()}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>File Size:</strong></td>
+                                        <td>${formatFileSize(file.fileSize)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>File Type:</strong></td>
+                                        <td>${file.fileType}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Status:</strong></td>
+                                        <td><span class="badge ${getStatusClass(file.status)}">${file.status}</span></td>
+                                    </tr>
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>File Actions</h6>
+                                <div class="d-grid gap-2">
+                                    ${file.blobUrl ? `<a href="${file.blobUrl}" class="btn btn-primary" target="_blank" download="${file.fileName}">
+                                        <i class="fas fa-download me-1"></i>Download File
+                                    </a>` : ''}
+                                    ${file.status !== 'Verified' ? `<button class="btn btn-success" onclick="updateFileStatus('${file.fileName}', 'Verified')">
+                                        <i class="fas fa-check me-1"></i>Mark as Verified
+                                    </button>` : ''}
+                                    ${file.status !== 'Rejected' ? `<button class="btn btn-danger" onclick="updateFileStatus('${file.fileName}', 'Rejected')">
+                                        <i class="fas fa-times me-1"></i>Mark as Rejected
+                                    </button>` : ''}
+                                    <button class="btn btn-outline-danger" onclick="deleteFile('${file.fileName}')">
+                                        <i class="fas fa-trash me-1"></i>Delete File
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                    const modal = new bootstrap.Modal(document.getElementById('fileDetailsModal'));
+                    modal.show();
+                } else {
+                    showToast(result.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error loading file details:', error);
+                showToast('Error loading file details', 'error');
+            }
+        }
+
+        async function updateFileStatus(fileName, newStatus) {
+            if (!confirm(`Are you sure you want to mark "${fileName}" as ${newStatus}?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch('@Url.Action("UpdateFileStatus", "Upload")', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                    },
+                    body: JSON.stringify({ fileName: fileName, newStatus: newStatus })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showToast(result.message, 'success');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showToast(result.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error updating file status:', error);
+                showToast('Error updating file status', 'error');
+            }
+        }
+
+        async function deleteFile(fileName) {
+            if (!confirm(`Are you sure you want to delete "${fileName}"? This action cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch('@Url.Action("DeleteFile", "Upload")', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                    },
+                    body: JSON.stringify({ fileName: fileName })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showToast(result.message, 'success');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showToast(result.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error deleting file:', error);
+                showToast('Error deleting file', 'error');
+            }
+        }
+
+        function getStatusClass(status) {
+            switch (status) {
+                case 'Verified': return 'bg-success';
+                case 'Rejected': return 'bg-danger';
+                default: return 'bg-warning';
+            }
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function showToast(message, type) {
+            const toast = document.createElement('div');
+            toast.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+            toast.style.cssText = 'top: 20px; right: 20px; z-index: 1050; min-width: 300px;';
+            toast.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check' : 'exclamation'}-circle me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 5000);
+        }
+    </script>
+}

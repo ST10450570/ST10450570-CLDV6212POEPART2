@@ -347,7 +347,8 @@
                                 <li class="nav-item">
                                     <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Upload" ? "active" : "")"
                                        asp-area="" asp-controller="Upload" asp-action="Index">
-                                        <i class="fas fa-cloud-upload-alt me-1"></i> Upload Files
+                                        <i class="fas fa-cloud-upload-alt me-1"></i>
+                                        @(User.IsInRole("Admin") ? "Uploaded Files" : "Upload Files")
                                     </a>
                                 </li>
                             }
@@ -367,13 +368,16 @@
                         <ul class="navbar-nav">
                             @if (User.Identity.IsAuthenticated)
                             {
-                                <li class="nav-item">
-                                    <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Cart" ? "active" : "")"
-                                       asp-area="" asp-controller="Cart" asp-action="Index">
-                                        <i class="fas fa-shopping-cart me-1"></i> Cart
-                                        <span id="cartCount" class="badge bg-warning ms-1">0</span>
-                                    </a>
-                                </li>
+                                @if (User.IsInRole("Customer"))
+                                {
+                                    <li class="nav-item">
+                                        <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Cart" ? "active" : "")"
+                                           asp-area="" asp-controller="Cart" asp-action="Index">
+                                            <i class="fas fa-shopping-cart me-1"></i> Cart
+                                            <span id="cartCount" class="badge bg-warning ms-1">0</span>
+                                        </a>
+                                    </li>
+                                }
                                 <li class="nav-item dropdown">
                                     <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
                                         <i class="fas fa-user me-1"></i> @User.Identity.Name
@@ -499,7 +503,25 @@
                     }
                 });
             });
+
+            // Update cart count
+            updateCartCount();
         });
+
+        async function updateCartCount() {
+            try {
+                const response = await fetch('@Url.Action("GetCartCount", "Cart")');
+                if (response.ok) {
+                    const data = await response.json();
+                    const cartBadge = document.getElementById('cartCount');
+                    if (cartBadge) {
+                        cartBadge.textContent = data.count;
+                    }
+                }
+            } catch (error) {
+                console.error('Error updating cart count:', error);
+            }
+        }
     </script>
 
     @await RenderSectionAsync("Scripts", required: false)

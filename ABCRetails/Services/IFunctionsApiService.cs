@@ -510,6 +510,75 @@ namespace ABCRetails.Services
             }
         }
 
+        public async Task<List<UploadedFile>> GetUploadedFilesAsync()
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync("api/uploads");
+                if (response.IsSuccessStatusCode)
+                {
+                    var content = await response.Content.ReadAsStringAsync();
+                    _logger.LogInformation("Uploaded files API Response: {Content}", content);
+
+                    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+                    try
+                    {
+                        var uploadedFiles = JsonSerializer.Deserialize<List<UploadedFile>>(content, options);
+                        return uploadedFiles ?? new List<UploadedFile>();
+                    }
+                    catch (JsonException ex)
+                    {
+                        _logger.LogError(ex, "Failed to deserialize uploaded files response");
+                        // Return empty list if API returns different format or error
+                        return new List<UploadedFile>();
+                    }
+                }
+
+                _logger.LogWarning("Failed to get uploaded files: {StatusCode}", response.StatusCode);
+                return new List<UploadedFile>();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting uploaded files from Functions API");
+                return new List<UploadedFile>();
+            }
+        }
+
+        public async Task<UploadedFile?> GetUploadedFileAsync(string fileName)
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync($"api/uploads/{fileName}");
+                if (response.IsSuccessStatusCode)
+                {
+                    var content = await response.Content.ReadAsStringAsync();
+                    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    return JsonSerializer.Deserialize<UploadedFile>(content, options);
+                }
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting uploaded file {FileName}", fileName);
+                return null;
+            }
+        }
+
+        public async Task<bool> DeleteUploadedFileAsync(string fileName)
+        {
+            try
+            {
+                var response = await _httpClient.DeleteAsync($"api/uploads/{fileName}");
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting uploaded file {FileName}", fileName);
+                return false;
+            }
+        }
+
         // Search operations
         public async Task<List<Customer>> SearchCustomersAsync(string searchTerm)
         {

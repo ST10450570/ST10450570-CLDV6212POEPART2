@@ -15,8 +15,8 @@
 </div>
 
 <div class="row">
-    <div class="col-md-9">
-        <form asp-action="Edit" class="shadow-sm p-4 bg-white rounded" enctype="multipart/form-data">
+    <div class="col-md-12">
+        <form asp-action="Edit" class="shadow-sm p-4 bg-white rounded">
             <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
             <!-- Hidden system fields -->
@@ -44,59 +44,20 @@
 
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Customer</label>
-                        <select asp-for="Order.CustomerId" class="form-control" disabled>
-                            <option value="">Select Customer</option>
-                            @foreach (var customer in Model.Customers)
-                            {
-                                <option value="@customer.CustomerId" selected="@(customer.CustomerId == Model.Order.CustomerId)">
-                                    @customer.Name @customer.Surname (@customer.Username)
-                                </option>
-                            }
-                        </select>
+                        <input asp-for="Order.Username" class="form-control" readonly />
+                        <small class="form-text text-muted">Customer ID: @Model.Order.CustomerId</small>
                     </div>
 
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Product</label>
-                        <select asp-for="Order.ProductId" class="form-control" id="productDropdown">
-                            <option value="">Select Product</option>
-                            @foreach (var product in Model.Products)
-                            {
-                                <option value="@product.ProductId" data-price="@product.Price"
-                                        selected="@(product.ProductId == Model.Order.ProductId)">
-                                    @product.ProductName - @product.Price.ToString("0.00") (Stock: @product.StockAvailable)
-                                </option>
-                            }
-                        </select>
-                    </div>
-
-                    <!-- Product Image Upload Section -->
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label for="Image">Product Image</label>
-                            <input type="file" class="form-control" id="Image" name="Image" accept="image/*" />
-                            <small class="form-text text-muted">
-                                Leave empty to keep the current image
-                            </small>
-
-                            <div class="mt-2" id="current-image-container">
-                                <p>Current Image:</p>
-                                @if (!string.IsNullOrEmpty(Model.Order.ProductImageUrl))
-                                {
-                                    <img src="@Model.Order.ProductImageUrl" alt="Current product image"
-                                         class="img-thumbnail" style="max-height: 200px;" />
-                                }
-                                else
-                                {
-                                    <p>No image set</p>
-                                }
-                            </div>
-                        </div>
+                        <input asp-for="Order.ProductName" class="form-control" readonly />
+                        <small class="form-text text-muted">Product ID: @Model.Order.ProductId</small>
                     </div>
 
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Quantity</label>
-                        <input asp-for="Order.Quantity" class="form-control" id="quantityInput" min="1" />
-                        <small id="stockMessage" class="form-text"></small>
+                        <input asp-for="Order.Quantity" class="form-control" min="1" />
+                        <span asp-validation-for="Order.Quantity" class="text-danger"></span>
                     </div>
                 </div>
             </div>
@@ -107,22 +68,23 @@
                     <h5 class="mb-0">Pricing & Status</h5>
                 </div>
                 <div class="card-body row g-3">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label class="form-label fw-semibold">Unit Price</label>
-                        <input asp-for="Order.UnitPrice" class="form-control" readonly id="unitPriceDisplay" />
+                        <input asp-for="Order.UnitPrice" class="form-control" readonly />
                     </div>
 
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label class="form-label fw-semibold">Total Price</label>
-                        <input asp-for="Order.TotalPrice" class="form-control" readonly id="totalPriceDisplay" />
+                        <input asp-for="Order.TotalPrice" class="form-control" readonly />
                     </div>
 
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label class="form-label fw-semibold">Order Date</label>
                         <input asp-for="Order.OrderDate" class="form-control" type="date" />
+                        <span asp-validation-for="Order.OrderDate" class="text-danger"></span>
                     </div>
 
-                    <div class="col-md-6">
+                    <div class="col-md-12">
                         <label class="form-label fw-semibold">Status</label>
                         <select asp-for="Order.Status" class="form-control">
                             @foreach (var status in Model.StatusOptions)
@@ -130,6 +92,7 @@
                                 <option value="@status" selected="@(status == Model.Order.Status)">@status</option>
                             }
                         </select>
+                        <span asp-validation-for="Order.Status" class="text-danger"></span>
                     </div>
                 </div>
             </div>
@@ -142,22 +105,6 @@
                 <button type="submit" class="btn btn-primary px-4">Save Changes</button>
             </div>
         </form>
-    </div>
-
-    <!-- Product Image Preview Card -->
-    <div class="col-md-3">
-        <div class="card shadow-sm sticky-top" style="top: 1rem;">
-            <div class="card-header bg-light text-center">
-                <h6 class="mb-0">Product Image Preview</h6>
-            </div>
-            <div class="card-body text-center">
-                <img id="productImage" src="@Model.Order.ProductImageUrl" alt="Product Image"
-                     class="img-fluid rounded mb-2 border" style="max-height: 220px;" />
-                <p id="noImageMessage" class="text-muted" style="display:@(string.IsNullOrEmpty(Model.Order.ProductImageUrl) ? "block" : "none");">
-                    No image available
-                </p>
-            </div>
-        </div>
     </div>
 </div>
 
@@ -242,84 +189,4 @@
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
-
-    <script>
-        $(document).ready(function () {
-            updatePriceDisplay();
-            updateStockMessage();
-            updateProductImage();
-
-            $('#productDropdown').change(function () {
-                updateProductDetails();
-                updatePriceDisplay();
-                updateStockMessage();
-                updateProductImage();
-            });
-
-            $('#quantityInput').on('input', function () {
-                updatePriceDisplay();
-                updateStockMessage();
-            });
-
-            function updateProductDetails() {
-                var selectedProduct = $('#productDropdown option:selected');
-                var price = selectedProduct.data('price');
-                $('#Order_UnitPrice').val(price);
-            }
-
-            function updatePriceDisplay() {
-                var unitPrice = parseFloat($('#Order_UnitPrice').val()) || 0;
-                var quantity = parseInt($('#quantityInput').val()) || 0;
-                var totalPrice = unitPrice * quantity;
-                $('#unitPriceDisplay').val(unitPrice.toFixed(2));
-                $('#totalPriceDisplay').val(totalPrice.toFixed(2));
-                $('#Order_TotalPrice').val(totalPrice);
-            }
-
-            function updateStockMessage() {
-                var selectedProduct = $('#productDropdown option:selected');
-                var availableStock = 0;
-
-                if (selectedProduct.length > 0 && selectedProduct.val() !== '') {
-                    var productText = selectedProduct.text();
-                    var stockMatch = productText.match(/Stock: (\d+)/);
-                    if (stockMatch) availableStock = parseInt(stockMatch[1]);
-                }
-
-                var quantity = parseInt($('#quantityInput').val()) || 0;
-                if (availableStock > 0) {
-                    if (quantity > availableStock) {
-                        $('#stockMessage').html('<span class="badge bg-danger">Insufficient stock! Available: ' + availableStock + '</span>');
-                    } else {
-                        $('#stockMessage').html('<span class="badge bg-success">Available stock: ' + availableStock + '</span>');
-                    }
-                } else {
-                    $('#stockMessage').html('<span class="badge bg-secondary">Stock information not available</span>');
-                }
-            }
-
-            function updateProductImage() {
-                var selectedProductId = $('#productDropdown').val();
-                if (selectedProductId) {
-                    $.get('@Url.Action("GetProductImage", "Order")', { productId: selectedProductId })
-                        .done(function (data) {
-                            if (data.success && data.imageUrl) {
-                                $('#productImage').attr('src', data.imageUrl).show();
-                                $('#noImageMessage').hide();
-                            } else {
-                                $('#productImage').hide();
-                                $('#noImageMessage').show();
-                            }
-                        })
-                        .fail(function () {
-                            $('#productImage').hide();
-                            $('#noImageMessage').show();
-                        });
-                } else {
-                    $('#productImage').hide();
-                    $('#noImageMessage').show();
-                }
-            }
-        });
-    </script>
 }

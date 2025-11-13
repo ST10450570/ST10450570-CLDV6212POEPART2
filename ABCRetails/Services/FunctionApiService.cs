@@ -30,6 +30,10 @@ namespace ABCRetails.Services
 
         // Upload operations
         Task<string> UploadProofOfPaymentAsync(IFormFile file, string? orderId = null, string? customerName = null);
+        
+        Task<List<UploadedFile>> GetUploadedFilesAsync();
+        Task<UploadedFile?> GetUploadedFileAsync(string fileName);
+        Task<bool> DeleteUploadedFileAsync(string fileName);
 
         // Search operations
         Task<List<Customer>> SearchCustomersAsync(string searchTerm);
@@ -37,5 +41,18 @@ namespace ABCRetails.Services
         Task<List<Order>> SearchOrdersAsync(string searchTerm);
     }
 
-    
+    public class UploadedFile
+    {
+        public string FileName { get; set; } = string.Empty;
+        public string CustomerName { get; set; } = string.Empty;
+        public string OrderId { get; set; } = string.Empty;
+        public DateTime UploadDate { get; set; }
+        public long FileSize { get; set; }
+        public string FileType { get; set; } = string.Empty;
+        public string Status { get; set; } = "Pending";
+        public string BlobUrl { get; set; } = string.Empty;
+    }
+
+
+
 }

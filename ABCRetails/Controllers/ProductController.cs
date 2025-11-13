@@ -24,6 +24,7 @@ namespace ABCRetails.Controllers
                 : await _functionsApiService.SearchProductsAsync(searchTerm);
 
             ViewBag.SearchTerm = searchTerm;
+            ViewBag.IsCustomer = User.IsInRole("Customer");
             return View(products);
         }
 
@@ -125,6 +126,39 @@ namespace ABCRetails.Controllers
                 TempData["Error"] = $"Error deleting product: {ex.Message}";
             }
             return RedirectToAction(nameof(Index));
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Customer")]
+        public async Task<JsonResult> AddToCart(string productId, int quantity = 1)
+        {
+            try
+            {
+                if (quantity < 1)
+                {
+                    return Json(new { success = false, message = "Quantity must be at least 1." });
+                }
+
+                var product = await _functionsApiService.GetProductAsync(productId);
+                if (product == null)
+                {
+                    return Json(new { success = false, message = "Product not found." });
+                }
+
+                if (product.StockAvailable < quantity)
+                {
+                    return Json(new { success = false, message = $"Insufficient stock. Available: {product.StockAvailable}" });
+                }
+
+                // Since we can't directly access CartController from here, return success
+                // The actual cart addition will be handled by JavaScript
+                return Json(new { success = true, message = "Product can be added to cart." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking product {ProductId}", productId);
+                return Json(new { success = false, message = "Error checking product." });
+            }
         }
     }
 }
