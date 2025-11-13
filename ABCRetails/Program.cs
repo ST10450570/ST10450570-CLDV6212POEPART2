@@ -89,7 +89,7 @@ namespace ABCRetails
                         {
                             Username = "admin01",
                             Email = "admin@abcretail.com",
-                            PasswordHash = "adminpass123_hashed", // In production, use proper hashing
+                            PasswordHash = "adminpass123_hashed",
                             Role = "Admin",
                             CreatedAt = DateTime.UtcNow
                         },
@@ -97,12 +97,15 @@ namespace ABCRetails
                         {
                             Username = "customer01",
                             Email = "customer@abcretail.com",
-                            PasswordHash = "customerpass123_hashed", // In production, use proper hashing
+                            PasswordHash = "customerpass123_hashed",
                             Role = "Customer",
                             CreatedAt = DateTime.UtcNow
                         }
                     );
                     context.SaveChanges();
+
+                    var logger = services.GetRequiredService<ILogger<Program>>();
+                    logger.LogInformation("Database seeded with default users.");
                 }
             }
             catch (Exception ex)

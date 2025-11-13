@@ -22,6 +22,12 @@ namespace ABCRetails.Data
             {
                 entity.HasIndex(u => u.Username).IsUnique();
                 entity.HasIndex(u => u.Email).IsUnique();
+
+                // One-to-many relationship with Cart
+                entity.HasMany(u => u.CartItems)
+                      .WithOne(c => c.User)
+                      .HasForeignKey(c => c.UserId)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<Cart>(entity =>

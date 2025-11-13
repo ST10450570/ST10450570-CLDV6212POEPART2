@@ -23,8 +23,8 @@
                 <div class="d-flex align-items-center">
                     <div class="flex-grow-1">
                         <h6 class="card-title text-uppercase small opacity-75">Total Orders</h6>
-                        <h2 class="card-text display-6 fw-bold" id="totalOrders">-</h2>
-                        <small class="opacity-75">This month</small>
+                        <h2 class="card-text display-6 fw-bold">@ViewBag.TotalOrders</h2>
+                        <small class="opacity-75">All time orders</small>
                     </div>
                     <div class="flex-shrink-0">
                         <i class="fas fa-shopping-cart fa-3x opacity-50"></i>
@@ -45,7 +45,7 @@
                 <div class="d-flex align-items-center">
                     <div class="flex-grow-1">
                         <h6 class="card-title text-uppercase small opacity-75">Pending Orders</h6>
-                        <h2 class="card-text display-6 fw-bold" id="pendingOrders">-</h2>
+                        <h2 class="card-text display-6 fw-bold">@ViewBag.PendingOrders</h2>
                         <small class="opacity-75">Awaiting processing</small>
                     </div>
                     <div class="flex-shrink-0">
@@ -66,18 +66,18 @@
             <div class="card-body">
                 <div class="d-flex align-items-center">
                     <div class="flex-grow-1">
-                        <h6 class="card-title text-uppercase small opacity-75">Low Stock</h6>
-                        <h2 class="card-text display-6 fw-bold" id="lowStockCount">-</h2>
-                        <small class="opacity-75">Products to restock</small>
+                        <h6 class="card-title text-uppercase small opacity-75">Total Products</h6>
+                        <h2 class="card-text display-6 fw-bold">@ViewBag.TotalProducts</h2>
+                        <small class="opacity-75">Products in inventory</small>
                     </div>
                     <div class="flex-shrink-0">
-                        <i class="fas fa-exclamation-triangle fa-3x opacity-50"></i>
+                        <i class="fas fa-box fa-3x opacity-50"></i>
                     </div>
                 </div>
             </div>
             <div class="card-footer bg-warning-dark">
                 <a asp-controller="Product" asp-action="Index" class="text-dark text-decoration-none">
-                    Manage Stock <i class="fas fa-arrow-right ms-1"></i>
+                    Manage Products <i class="fas fa-arrow-right ms-1"></i>
                 </a>
             </div>
         </div>
@@ -88,18 +88,18 @@
             <div class="card-body">
                 <div class="d-flex align-items-center">
                     <div class="flex-grow-1">
-                        <h6 class="card-title text-uppercase small opacity-75">Total Revenue</h6>
-                        <h2 class="card-text display-6 fw-bold" id="totalRevenue">-</h2>
-                        <small class="opacity-75">This month</small>
+                        <h6 class="card-title text-uppercase small opacity-75">Total Customers</h6>
+                        <h2 class="card-text display-6 fw-bold">@ViewBag.TotalCustomers</h2>
+                        <small class="opacity-75">Registered customers</small>
                     </div>
                     <div class="flex-shrink-0">
-                        <i class="fas fa-chart-line fa-3x opacity-50"></i>
+                        <i class="fas fa-users fa-3x opacity-50"></i>
                     </div>
                 </div>
             </div>
             <div class="card-footer bg-info-dark">
-                <a asp-controller="Order" asp-action="Index" class="text-white text-decoration-none">
-                    View Reports <i class="fas fa-arrow-right ms-1"></i>
+                <a asp-controller="Customer" asp-action="Index" class="text-white text-decoration-none">
+                    View Customers <i class="fas fa-arrow-right ms-1"></i>
                 </a>
             </div>
         </div>
@@ -282,70 +282,114 @@
 
         async function loadDashboardData() {
             try {
-                // Simulate loading data (in a real app, you'd fetch from your API)
-                setTimeout(() => {
-                    document.getElementById('totalOrders').textContent = '47';
-                    document.getElementById('pendingOrders').textContent = '12';
-                    document.getElementById('lowStockCount').textContent = '8';
-                    document.getElementById('totalRevenue').textContent = 'R15,230';
+                // Load recent orders via AJAX
+                const ordersResponse = await fetch('@Url.Action("GetRecentOrders", "Home")');
+                if (ordersResponse.ok) {
+                    const orders = await ordersResponse.json();
+                    displayRecentOrders(orders);
+                }
 
-                    // Load recent orders
-                    document.getElementById('recentOrders').innerHTML = `
-                        <div class="list-group list-group-flush">
-                            <div class="list-group-item d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="mb-1">ORD-001234</h6>
-                                    <small class="text-muted">Customer: john_doe • 2 items</small>
-                                </div>
-                                <span class="badge bg-warning">Pending</span>
-                            </div>
-                            <div class="list-group-item d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="mb-1">ORD-001233</h6>
-                                    <small class="text-muted">Customer: jane_smith • 1 item</small>
-                                </div>
-                                <span class="badge bg-success">Processed</span>
-                            </div>
-                            <div class="list-group-item d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="mb-1">ORD-001232</h6>
-                                    <small class="text-muted">Customer: mike_wilson • 3 items</small>
-                                </div>
-                                <span class="badge bg-primary">Submitted</span>
-                            </div>
-                        </div>
-                    `;
-
-                    // Load low stock products
-                    document.getElementById('lowStockProducts').innerHTML = `
-                        <div class="list-group list-group-flush">
-                            <div class="list-group-item d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="mb-1">Wireless Headphones</h6>
-                                    <small class="text-muted">Stock: 3</small>
-                                </div>
-                                <span class="badge bg-danger">Low</span>
-                            </div>
-                            <div class="list-group-item d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="mb-1">Smart Watch</h6>
-                                    <small class="text-muted">Stock: 5</small>
-                                </div>
-                                <span class="badge bg-warning">Warning</span>
-                            </div>
-                            <div class="list-group-item d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="mb-1">Bluetooth Speaker</h6>
-                                    <small class="text-muted">Stock: 2</small>
-                                </div>
-                                <span class="badge bg-danger">Low</span>
-                            </div>
-                        </div>
-                    `;
-                }, 1000);
+                // Load low stock products via AJAX
+                const productsResponse = await fetch('@Url.Action("GetLowStockProducts", "Home")');
+                if (productsResponse.ok) {
+                    const products = await productsResponse.json();
+                    displayLowStockProducts(products);
+                }
             } catch (error) {
                 console.error('Error loading dashboard data:', error);
+                displayErrorMessages();
             }
+        }
+
+        function displayRecentOrders(orders) {
+            const container = document.getElementById('recentOrders');
+            if (!orders || orders.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-4">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No recent orders found.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const ordersHtml = orders.map(order => `
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-1">${order.orderId}</h6>
+                        <small class="text-muted">Customer: ${order.customerName} • ${order.productName}</small>
+                        <br>
+                        <small class="text-muted">Ordered: ${new Date(order.orderDate).toLocaleDateString()}</small>
+                    </div>
+                    <span class="badge bg-${getStatusBadgeClass(order.status)}">${order.status}</span>
+                </div>
+            `).join('');
+
+            container.innerHTML = `
+                <div class="list-group list-group-flush">
+                    ${ordersHtml}
+                </div>
+            `;
+        }
+
+        function displayLowStockProducts(products) {
+            const container = document.getElementById('lowStockProducts');
+            if (!products || products.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-4">
+                        <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                        <p class="text-muted">All products have sufficient stock.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const productsHtml = products.map(product => `
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-1">${product.productName}</h6>
+                        <small class="text-muted">Stock: ${product.stockAvailable}</small>
+                    </div>
+                    <span class="badge bg-${product.stockAvailable <= 2 ? 'danger' : 'warning'}">
+                        ${product.stockAvailable <= 2 ? 'Low' : 'Warning'}
+                    </span>
+                </div>
+            `).join('');
+
+            container.innerHTML = `
+                <div class="list-group list-group-flush">
+                    ${productsHtml}
+                </div>
+            `;
+        }
+
+        function getStatusBadgeClass(status) {
+            switch (status) {
+                case 'Submitted': return 'info';
+                case 'Processing': return 'warning';
+                case 'Completed': return 'success';
+                case 'Cancelled': return 'danger';
+                default: return 'secondary';
+            }
+        }
+
+        function displayErrorMessages() {
+            const ordersContainer = document.getElementById('recentOrders');
+            const productsContainer = document.getElementById('lowStockProducts');
+
+            ordersContainer.innerHTML = `
+                <div class="text-center py-4">
+                    <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                    <p class="text-muted">Unable to load recent orders.</p>
+                </div>
+            `;
+
+            productsContainer.innerHTML = `
+                <div class="text-center py-4">
+                    <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                    <p class="text-muted">Unable to load stock information.</p>
+                </div>
+            `;
         }
     </script>
 }

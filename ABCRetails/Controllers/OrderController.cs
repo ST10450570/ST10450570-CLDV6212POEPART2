@@ -1,4 +1,6 @@
-﻿using System.Threading.Tasks;
+﻿using System.Security.Claims;
+using System.Threading.Tasks;
+using ABCRetails.Data;
 using ABCRetails.Models;
 using ABCRetails.Models.ViewModels;
 using ABCRetails.Services;
@@ -10,22 +12,33 @@ namespace ABCRetails.Controllers
     public class OrderController : Controller
     {
         private readonly IFunctionsApiService _functionsApiService;
+        private readonly AuthDbContext _authContext;
 
-        public OrderController(IFunctionsApiService functionsApiService)
+        public OrderController(IFunctionsApiService functionsApiService, AuthDbContext authContext)
         {
             _functionsApiService = functionsApiService;
+            _authContext = authContext;
         }
 
+        [Authorize]
         public async Task<IActionResult> Index(string searchTerm)
         {
             var orders = string.IsNullOrEmpty(searchTerm)
                 ? await _functionsApiService.GetAllOrdersAsync()
                 : await _functionsApiService.SearchOrdersAsync(searchTerm);
 
+            // If user is customer, only show their orders
+            if (User.IsInRole("Customer"))
+            {
+                var currentUsername = User.FindFirst(ClaimTypes.Name)?.Value;
+                orders = orders.Where(o => o.Username == currentUsername).ToList();
+            }
+
             ViewBag.SearchTerm = searchTerm;
             return View(orders);
         }
 
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create()
         {
             var customers = await _functionsApiService.GetAllCustomersAsync();
@@ -39,8 +52,10 @@ namespace ABCRetails.Controllers
             };
             return View(viewModel);
         }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create(OrderCreateViewModel model)
         {
             if (ModelState.IsValid)
@@ -79,7 +94,7 @@ namespace ABCRetails.Controllers
                         UnitPrice = product.Price,
                         TotalPrice = product.Price * model.Quantity,
                         Status = model.Status,
-                        ProductImageUrl = product.ImageUrl // Include product image URL
+                        ProductImageUrl = product.ImageUrl
                     };
 
                     await _functionsApiService.CreateOrderAsync(order);
@@ -96,6 +111,7 @@ namespace ABCRetails.Controllers
             return View(model);
         }
 
+        [Authorize]
         public async Task<IActionResult> Details(string id)
         {
             if (string.IsNullOrEmpty(id))
@@ -107,10 +123,22 @@ namespace ABCRetails.Controllers
             {
                 return NotFound();
             }
+
+            // Customers can only see their own orders
+            if (User.IsInRole("Customer"))
+            {
+                var currentUsername = User.FindFirst(ClaimTypes.Name)?.Value;
+                if (order.Username != currentUsername)
+                {
+                    return RedirectToAction("AccessDenied", "Home");
+                }
+            }
+
             return View(order);
         }
 
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         public async Task<JsonResult> UpdateOrderStatus(string id, string newStatus)
         {
             try
@@ -130,6 +158,7 @@ namespace ABCRetails.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(string id)
         {
             try
@@ -145,6 +174,7 @@ namespace ABCRetails.Controllers
         }
 
         [HttpGet]
+        [Authorize]
         public async Task<JsonResult> GetProductPrice(string productId)
         {
             try
@@ -170,6 +200,7 @@ namespace ABCRetails.Controllers
         }
 
         [HttpGet]
+        [Authorize]
         public async Task<JsonResult> GetProductImage(string productId)
         {
             try
@@ -193,6 +224,7 @@ namespace ABCRetails.Controllers
         }
 
         [HttpGet]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Edit(string id)
         {
             if (string.IsNullOrEmpty(id))
@@ -213,7 +245,7 @@ namespace ABCRetails.Controllers
                 Order = order,
                 Customers = await _functionsApiService.GetAllCustomersAsync(),
                 Products = await _functionsApiService.GetAllProductsAsync(),
-                StatusOptions = new List<string> { "Submitted", "Processing", "Completed", "Cancelled" } // Match your actual status values
+                StatusOptions = new List<string> { "Submitted", "Processing", "Completed", "Cancelled" }
             };
 
             return View(viewModel);
@@ -221,6 +253,7 @@ namespace ABCRetails.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Edit(string id, OrderEditViewModel model)
         {
             if (id != model.Id)
@@ -246,7 +279,7 @@ namespace ABCRetails.Controllers
                     originalOrder.OrderDate = model.Order.OrderDate;
 
                     // Preserve system properties
-                    originalOrder.PartitionKey = "Order"; // Ensure this is always set
+                    originalOrder.PartitionKey = "Order";
                     originalOrder.RowKey = model.Id;
 
                     await _functionsApiService.UpdateOrderAsync(originalOrder);
@@ -267,13 +300,6 @@ namespace ABCRetails.Controllers
             return View(model);
         }
 
-        private async Task PopulateDropdowns(OrderCreateViewModel model)
-        {
-            model.Customers = await _functionsApiService.GetAllCustomersAsync();
-            model.Products = await _functionsApiService.GetAllProductsAsync();
-        }
-
-        // Add this method to the existing OrderController class
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Admin")]
@@ -296,6 +322,23 @@ namespace ABCRetails.Controllers
                 TempData["Error"] = $"Error processing order: {ex.Message}";
             }
             return RedirectToAction(nameof(Index));
+        }
+
+        [HttpGet]
+        [Authorize(Roles = "Customer")]
+        public async Task<IActionResult> MyOrders()
+        {
+            var currentUsername = User.FindFirst(ClaimTypes.Name)?.Value;
+            var allOrders = await _functionsApiService.GetAllOrdersAsync();
+            var myOrders = allOrders.Where(o => o.Username == currentUsername).ToList();
+
+            return View(myOrders);
+        }
+
+        private async Task PopulateDropdowns(OrderCreateViewModel model)
+        {
+            model.Customers = await _functionsApiService.GetAllCustomersAsync();
+            model.Products = await _functionsApiService.GetAllProductsAsync();
         }
     }
 }

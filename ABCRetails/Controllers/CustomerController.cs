@@ -2,16 +2,18 @@
 using ABCRetails.Services;
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 
 namespace ABCRetails.Controllers
 {
+    [Authorize(Roles = "Admin")]
     public class CustomerController : Controller
     {
         private readonly IFunctionsApiService _functionsApiService;
 
         public CustomerController(IFunctionsApiService functionsApiService)
         {
-            _functionsApiService = functionsApiService; 
+            _functionsApiService = functionsApiService;
         }
 
         public async Task<IActionResult> Index(string searchTerm)

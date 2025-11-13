@@ -50,7 +50,7 @@ namespace ABCRetails.Controllers
                     return View(model);
                 }
 
-                // Verify password (in production, use proper password hashing)
+                // Verify password
                 if (VerifyPassword(model.Password, user.PasswordHash))
                 {
                     var claims = new List<Claim>
@@ -77,13 +77,14 @@ namespace ABCRetails.Controllers
 
                     _logger.LogInformation("User {Username} logged in.", user.Username);
 
+                    // Redirect based on role
                     if (user.Role == "Admin")
                     {
-                        return RedirectToAction("Index", "Home");
+                        return RedirectToAction("AdminDashboard", "Home");
                     }
                     else
                     {
-                        return RedirectToAction("Index", "Home");
+                        return RedirectToAction("CustomerDashboard", "Home");
                     }
                 }
 
@@ -109,14 +110,12 @@ namespace ABCRetails.Controllers
 
         private bool VerifyPassword(string password, string storedHash)
         {
-            // In a real application, use proper password hashing like BCrypt or ASP.NET Identity PasswordHasher
-            // This is a simplified version for demonstration
-            return password + "_hashed" == storedHash;
+            return HashPassword(password) == storedHash;
         }
 
         private string HashPassword(string password)
         {
-            // Simple hashing for demonstration - use proper hashing in production
+            // Simple hashing for demonstration
             return password + "_hashed";
         }
 
@@ -148,6 +147,8 @@ namespace ABCRetails.Controllers
                         return View(user);
                     }
 
+                    // Force Customer role for new registrations (security measure)
+                    user.Role = "Customer";
                     user.PasswordHash = HashPassword(password);
                     user.CreatedAt = DateTime.UtcNow;
 
@@ -160,7 +161,8 @@ namespace ABCRetails.Controllers
                     var loginModel = new LoginViewModel
                     {
                         Username = user.Username,
-                        Password = password
+                        Password = password,
+                        RememberMe = false
                     };
 
                     return await Index(loginModel);
@@ -168,7 +170,7 @@ namespace ABCRetails.Controllers
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error registering user {Username}", user.Username);
-                    ModelState.AddModelError("", "An error occurred during registration. Please try again.");
+                    ModelState.AddModelError("", $"An error occurred during registration: {ex.Message}");
                 }
             }
             return View(user);

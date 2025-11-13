@@ -5,9 +5,11 @@ using ABCRetails.Models.ViewModels;
 using ABCRetails.Data;
 using ABCRetails.Services;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 
 namespace ABCRetails.Controllers
 {
+    [Authorize(Roles = "Customer")]
     public class CartController : Controller
     {
         private readonly AuthDbContext _authContext;
@@ -230,7 +232,7 @@ namespace ABCRetails.Controllers
                         var order = new Order
                         {
                             RowKey = Guid.NewGuid().ToString(),
-                            CustomerId = user.Username, // Using username as customer ID
+                            CustomerId = user.Id.ToString(),
                             Username = user.Username,
                             ProductId = product.ProductId,
                             ProductName = product.ProductName,

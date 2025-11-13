@@ -22,18 +22,18 @@
             <div class="card-body">
                 <div class="d-flex align-items-center">
                     <div class="flex-grow-1">
-                        <h6 class="card-title text-uppercase small opacity-75">My Orders</h6>
-                        <h2 class="card-text display-6 fw-bold" id="myOrdersCount">-</h2>
-                        <small class="opacity-75">Total orders placed</small>
+                        <h6 class="card-title text-uppercase small opacity-75">Available Products</h6>
+                        <h2 class="card-text display-6 fw-bold">@ViewBag.TotalProducts</h2>
+                        <small class="opacity-75">Products to shop from</small>
                     </div>
                     <div class="flex-shrink-0">
-                        <i class="fas fa-shopping-bag fa-3x opacity-50"></i>
+                        <i class="fas fa-box fa-3x opacity-50"></i>
                     </div>
                 </div>
             </div>
             <div class="card-footer bg-primary-dark">
-                <a asp-controller="Order" asp-action="Index" class="text-white text-decoration-none">
-                    View Orders <i class="fas fa-arrow-right ms-1"></i>
+                <a asp-controller="Product" asp-action="Index" class="text-white text-decoration-none">
+                    Shop Now <i class="fas fa-arrow-right ms-1"></i>
                 </a>
             </div>
         </div>
@@ -44,18 +44,18 @@
             <div class="card-body">
                 <div class="d-flex align-items-center">
                     <div class="flex-grow-1">
-                        <h6 class="card-title text-uppercase small opacity-75">Cart Items</h6>
-                        <h2 class="card-text display-6 fw-bold" id="cartItemsCount">-</h2>
-                        <small class="opacity-75">Items in cart</small>
+                        <h6 class="card-title text-uppercase small opacity-75">Featured Products</h6>
+                        <h2 class="card-text display-6 fw-bold">@(ViewBag.FeaturedProducts?.Count ?? 0)</h2>
+                        <small class="opacity-75">Special selections</small>
                     </div>
                     <div class="flex-shrink-0">
-                        <i class="fas fa-shopping-cart fa-3x opacity-50"></i>
+                        <i class="fas fa-star fa-3x opacity-50"></i>
                     </div>
                 </div>
             </div>
             <div class="card-footer bg-success-dark">
-                <a asp-controller="Cart" asp-action="Index" class="text-white text-decoration-none">
-                    View Cart <i class="fas fa-arrow-right ms-1"></i>
+                <a asp-controller="Product" asp-action="Index" class="text-white text-decoration-none">
+                    View Featured <i class="fas fa-arrow-right ms-1"></i>
                 </a>
             </div>
         </div>
@@ -66,18 +66,18 @@
             <div class="card-body">
                 <div class="d-flex align-items-center">
                     <div class="flex-grow-1">
-                        <h6 class="card-title text-uppercase small opacity-75">Pending Orders</h6>
-                        <h2 class="card-text display-6 fw-bold" id="pendingOrdersCount">-</h2>
-                        <small class="opacity-75">Awaiting processing</small>
+                        <h6 class="card-title text-uppercase small opacity-75">My Orders</h6>
+                        <h2 class="card-text display-6 fw-bold" id="myOrdersCount">-</h2>
+                        <small class="opacity-75">Total orders placed</small>
                     </div>
                     <div class="flex-shrink-0">
-                        <i class="fas fa-clock fa-3x opacity-50"></i>
+                        <i class="fas fa-shopping-bag fa-3x opacity-50"></i>
                     </div>
                 </div>
             </div>
             <div class="card-footer bg-info-dark">
-                <a asp-controller="Order" asp-action="Index" class="text-white text-decoration-none">
-                    Track Orders <i class="fas fa-arrow-right ms-1"></i>
+                <a asp-controller="Order" asp-action="MyOrders" class="text-white text-decoration-none">
+                    View Orders <i class="fas fa-arrow-right ms-1"></i>
                 </a>
             </div>
         </div>
@@ -94,7 +94,7 @@
         </div>
         <div class="row">
             <div class="col-xl-3 col-md-6 mb-3">
-                <a asp-controller="Home" asp-action="Index" class="card action-card h-100 text-decoration-none">
+                <a asp-controller="Product" asp-action="Index" class="card action-card h-100 text-decoration-none">
                     <div class="card-body text-center">
                         <i class="fas fa-store fa-3x text-primary mb-3"></i>
                         <h5 class="card-title">Shop Products</h5>
@@ -112,7 +112,7 @@
                 </a>
             </div>
             <div class="col-xl-3 col-md-6 mb-3">
-                <a asp-controller="Order" asp-action="Index" class="card action-card h-100 text-decoration-none">
+                <a asp-controller="Order" asp-action="MyOrders" class="card action-card h-100 text-decoration-none">
                     <div class="card-body text-center">
                         <i class="fas fa-list-alt fa-3x text-warning mb-3"></i>
                         <h5 class="card-title">My Orders</h5>
@@ -133,8 +133,61 @@
     </div>
 </div>
 
-<!-- Recent Orders & Featured Products -->
+<!-- Featured Products & Recent Orders -->
 <div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">
+                    <i class="fas fa-star text-warning me-2"></i>Featured Products
+                </h5>
+            </div>
+            <div class="card-body">
+                @if (ViewBag.FeaturedProducts != null && ViewBag.FeaturedProducts.Count > 0)
+                {
+                    <div class="list-group list-group-flush">
+                        @foreach (var product in ViewBag.FeaturedProducts)
+                        {
+                            <div class="list-group-item">
+                                <div class="d-flex align-items-center">
+                                    @if (!string.IsNullOrEmpty(product.ImageUrl))
+                                    {
+                                        <img src="@product.ImageUrl" class="rounded me-3" alt="@product.ProductName" style="width: 50px; height: 50px; object-fit: cover;">
+                                    }
+                                    else
+                                    {
+                                        <div class="bg-light rounded me-3 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                                            <i class="fas fa-image text-muted"></i>
+                                        </div>
+                                    }
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1">@product.ProductName</h6>
+                                        <small class="text-muted">@product.Price.ToString("C")</small>
+                                    </div>
+                                    <button class="btn btn-primary btn-sm" onclick="addToCart('@product.ProductId')">
+                                        <i class="fas fa-cart-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-4">
+                        <i class="fas fa-box fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No featured products available.</p>
+                    </div>
+                }
+            </div>
+            <div class="card-footer bg-light text-end">
+                <a asp-controller="Product" asp-action="Index" class="btn btn-outline-primary btn-sm">
+                    Browse All <i class="fas fa-arrow-right ms-1"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
     <div class="col-md-6">
         <div class="card">
             <div class="card-header bg-light">
@@ -153,33 +206,8 @@
                 </div>
             </div>
             <div class="card-footer bg-light text-end">
-                <a asp-controller="Order" asp-action="Index" class="btn btn-outline-primary btn-sm">
+                <a asp-controller="Order" asp-action="MyOrders" class="btn btn-outline-primary btn-sm">
                     View All Orders <i class="fas fa-arrow-right ms-1"></i>
-                </a>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header bg-light">
-                <h5 class="mb-0">
-                    <i class="fas fa-star text-warning me-2"></i>Recommended For You
-                </h5>
-            </div>
-            <div class="card-body">
-                <div id="recommendedProducts">
-                    <div class="text-center py-4">
-                        <div class="spinner-border text-warning" role="status">
-                            <span class="visually-hidden">Loading...</span>
-                        </div>
-                        <p class="mt-2 text-muted">Loading recommendations...</p>
-                    </div>
-                </div>
-            </div>
-            <div class="card-footer bg-light text-end">
-                <a asp-controller="Home" asp-action="Index" class="btn btn-outline-warning btn-sm">
-                    Browse All <i class="fas fa-arrow-right ms-1"></i>
                 </a>
             </div>
         </div>
@@ -234,82 +262,70 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             loadCustomerDashboardData();
-            updateCartCount();
         });
 
         async function loadCustomerDashboardData() {
             try {
-                // Simulate loading data
-                setTimeout(() => {
-                    document.getElementById('myOrdersCount').textContent = '8';
-                    document.getElementById('cartItemsCount').textContent = '3';
-                    document.getElementById('pendingOrdersCount').textContent = '2';
+                // Load user's order count
+                const ordersResponse = await fetch('@Url.Action("GetMyOrderCount", "Home")');
+                if (ordersResponse.ok) {
+                    const data = await ordersResponse.json();
+                    document.getElementById('myOrdersCount').textContent = data.count;
+                }
 
-                    // Load recent orders
-                    document.getElementById('myRecentOrders').innerHTML = `
-                        <div class="list-group list-group-flush">
-                            <div class="list-group-item d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="mb-1">ORD-001234</h6>
-                                    <small class="text-muted">Wireless Headphones • R1,299.00</small>
-                                    <br>
-                                    <small class="text-muted">Ordered: ${new Date().toLocaleDateString()}</small>
-                                </div>
-                                <span class="badge bg-warning">Processing</span>
-                            </div>
-                            <div class="list-group-item d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="mb-1">ORD-001233</h6>
-                                    <small class="text-muted">Smart Watch • R2,499.00</small>
-                                    <br>
-                                    <small class="text-muted">Ordered: ${new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toLocaleDateString()}</small>
-                                </div>
-                                <span class="badge bg-success">Delivered</span>
-                            </div>
-                        </div>
-                    `;
-
-                    // Load recommended products
-                    document.getElementById('recommendedProducts').innerHTML = `
-                        <div class="list-group list-group-flush">
-                            <div class="list-group-item">
-                                <div class="d-flex align-items-center">
-                                    <img src="https://via.placeholder.com/50" class="rounded me-3" alt="Product">
-                                    <div class="flex-grow-1">
-                                        <h6 class="mb-1">Bluetooth Speaker</h6>
-                                        <small class="text-muted">R599.00</small>
-                                    </div>
-                                    <button class="btn btn-primary btn-sm" onclick="addToCart('prod-123')">
-                                        <i class="fas fa-cart-plus"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="list-group-item">
-                                <div class="d-flex align-items-center">
-                                    <img src="https://via.placeholder.com/50" class="rounded me-3" alt="Product">
-                                    <div class="flex-grow-1">
-                                        <h6 class="mb-1">Phone Case</h6>
-                                        <small class="text-muted">R199.00</small>
-                                    </div>
-                                    <button class="btn btn-primary btn-sm" onclick="addToCart('prod-124')">
-                                        <i class="fas fa-cart-plus"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }, 1000);
+                // Load recent orders
+                const recentOrdersResponse = await fetch('@Url.Action("GetMyRecentOrders", "Home")');
+                if (recentOrdersResponse.ok) {
+                    const orders = await recentOrdersResponse.json();
+                    displayMyRecentOrders(orders);
+                }
             } catch (error) {
                 console.error('Error loading customer dashboard data:', error);
+                displayErrorMessages();
             }
         }
 
-        function updateCartCount() {
-            // This would typically fetch the actual cart count from your API
-            const cartCount = 3; // Example count
-            const cartBadge = document.getElementById('cartCount');
-            if (cartBadge) {
-                cartBadge.textContent = cartCount;
+        function displayMyRecentOrders(orders) {
+            const container = document.getElementById('myRecentOrders');
+            if (!orders || orders.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-4">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">You haven't placed any orders yet.</p>
+                        <a asp-controller="Product" asp-action="Index" class="btn btn-primary btn-sm">
+                            Start Shopping
+                        </a>
+                    </div>
+                `;
+                return;
+            }
+
+            const ordersHtml = orders.map(order => `
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-1">${order.orderId}</h6>
+                        <small class="text-muted">${order.productName} • ${order.totalPrice}</small>
+                        <br>
+                        <small class="text-muted">Ordered: ${new Date(order.orderDate).toLocaleDateString()}</small>
+                    </div>
+                    <span class="badge bg-${getStatusBadgeClass(order.status)}">${order.status}</span>
+                </div>
+            `).join('');
+
+            container.innerHTML = `
+                <div class="list-group list-group-flush">
+                    ${ordersHtml}
+                </div>
+            `;
+        }
+
+        function getStatusBadgeClass(status) {
+            switch (status) {
+                case 'Submitted': return 'info';
+                case 'Processing': return 'warning';
+                case 'Completed': return 'success';
+                case 'Cancelled': return 'danger';
+                default: return 'secondary';
             }
         }
 
@@ -326,15 +342,44 @@
 
                 const result = await response.json();
                 if (result.success) {
-                    alert('Product added to cart!');
-                    updateCartCount();
+                    showToast('Product added to cart!', 'success');
                 } else {
-                    alert(result.message);
+                    showToast(result.message, 'error');
                 }
             } catch (error) {
                 console.error('Error adding to cart:', error);
-                alert('Error adding product to cart.');
+                showToast('Error adding product to cart.', 'error');
             }
+        }
+
+        function showToast(message, type) {
+            // Simple toast notification
+            const toast = document.createElement('div');
+            toast.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
+            toast.style.cssText = 'top: 20px; right: 20px; z-index: 1050; min-width: 300px;';
+            toast.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check' : 'exclamation'}-circle me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.body.appendChild(toast);
+
+            // Auto remove after 3 seconds
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 3000);
+        }
+
+        function displayErrorMessages() {
+            const ordersContainer = document.getElementById('myRecentOrders');
+            ordersContainer.innerHTML = `
+                <div class="text-center py-4">
+                    <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                    <p class="text-muted">Unable to load your orders.</p>
+                </div>
+            `;
         }
     </script>
 }
