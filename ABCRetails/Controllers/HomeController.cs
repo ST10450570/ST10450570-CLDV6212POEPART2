@@ -227,5 +227,40 @@ namespace ABCRetails.Controllers
                 return Json(new List<object>());
             }
         }
+
+        [Authorize(Roles = "Customer")]
+        [HttpPost]
+        public async Task<JsonResult> AddToCartFromHome(string productId)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(productId))
+                {
+                    return Json(new { success = false, message = "Product ID is required." });
+                }
+
+                // Get the product to verify it exists
+                var product = await _functionsApiService.GetProductAsync(productId);
+                if (product == null)
+                {
+                    return Json(new { success = false, message = "Product not found." });
+                }
+
+                // Since we can't directly call CartController from here, return the product info
+                // and let the frontend handle the actual cart addition
+                return Json(new
+                {
+                    success = true,
+                    message = "Product found. You can add this to your cart.",
+                    productName = product.ProductName,
+                    price = product.Price
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error finding product {ProductId}", productId);
+                return Json(new { success = false, message = "Error finding product." });
+            }
+        }
     }
 }

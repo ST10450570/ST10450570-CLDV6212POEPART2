@@ -25,7 +25,10 @@ namespace ABCRetails.Services
                 if (response.IsSuccessStatusCode)
                 {
                     var content = await response.Content.ReadAsStringAsync();
-                    var customerDtos = JsonSerializer.Deserialize<List<CustomerDto>>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    _logger.LogInformation("Customers API Response: {Content}", content);
+
+                    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    var customerDtos = JsonSerializer.Deserialize<List<CustomerDto>>(content, options);
                     return customerDtos?.Select(MapToCustomer).ToList() ?? new List<Customer>();
                 }
                 _logger.LogWarning("Failed to get customers: {StatusCode}", response.StatusCode);
@@ -46,7 +49,10 @@ namespace ABCRetails.Services
                 if (response.IsSuccessStatusCode)
                 {
                     var content = await response.Content.ReadAsStringAsync();
-                    var customerDto = JsonSerializer.Deserialize<CustomerDto>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    _logger.LogInformation("Customer API Response: {Content}", content);
+
+                    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    var customerDto = JsonSerializer.Deserialize<CustomerDto>(content, options);
                     return customerDto != null ? MapToCustomer(customerDto) : null;
                 }
                 _logger.LogWarning("Failed to get customer {Id}: {StatusCode}", id, response.StatusCode);
@@ -70,7 +76,8 @@ namespace ABCRetails.Services
                 if (response.IsSuccessStatusCode)
                 {
                     var responseContent = await response.Content.ReadAsStringAsync();
-                    var createdDto = JsonSerializer.Deserialize<CustomerDto>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    var createdDto = JsonSerializer.Deserialize<CustomerDto>(responseContent, options);
                     return MapToCustomer(createdDto!);
                 }
                 throw new Exception($"Failed to create customer: {response.StatusCode}");
@@ -93,7 +100,8 @@ namespace ABCRetails.Services
                 if (response.IsSuccessStatusCode)
                 {
                     var responseContent = await response.Content.ReadAsStringAsync();
-                    var updatedDto = JsonSerializer.Deserialize<CustomerDto>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    var updatedDto = JsonSerializer.Deserialize<CustomerDto>(responseContent, options);
                     return MapToCustomer(updatedDto!);
                 }
                 throw new Exception($"Failed to update customer: {response.StatusCode}");
@@ -131,8 +139,30 @@ namespace ABCRetails.Services
                 if (response.IsSuccessStatusCode)
                 {
                     var content = await response.Content.ReadAsStringAsync();
-                    var productDtos = JsonSerializer.Deserialize<List<ProductDto>>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                    return productDtos?.Select(MapToProduct).ToList() ?? new List<Product>();
+                    _logger.LogInformation("Products API Response: {Content}", content);
+
+                    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+                    // Try to deserialize as array first
+                    try
+                    {
+                        var productDtos = JsonSerializer.Deserialize<List<ProductDto>>(content, options);
+                        return productDtos?.Select(MapToProduct).ToList() ?? new List<Product>();
+                    }
+                    catch (JsonException)
+                    {
+                        // If array fails, try single object
+                        try
+                        {
+                            var productDto = JsonSerializer.Deserialize<ProductDto>(content, options);
+                            return productDto != null ? new List<Product> { MapToProduct(productDto) } : new List<Product>();
+                        }
+                        catch (JsonException ex)
+                        {
+                            _logger.LogError(ex, "Failed to deserialize products response");
+                            return new List<Product>();
+                        }
+                    }
                 }
                 _logger.LogWarning("Failed to get products: {StatusCode}", response.StatusCode);
                 return new List<Product>();
@@ -148,14 +178,57 @@ namespace ABCRetails.Services
         {
             try
             {
+                if (string.IsNullOrEmpty(id))
+                {
+                    _logger.LogWarning("GetProductAsync called with null or empty ID");
+                    return null;
+                }
+
                 var response = await _httpClient.GetAsync($"api/products/{id}");
                 if (response.IsSuccessStatusCode)
                 {
                     var content = await response.Content.ReadAsStringAsync();
-                    var productDto = JsonSerializer.Deserialize<ProductDto>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                    return productDto != null ? MapToProduct(productDto) : null;
+                    _logger.LogInformation("Product API Response for {Id}: {Content}", id, content);
+
+                    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+                    try
+                    {
+                        var productDto = JsonSerializer.Deserialize<ProductDto>(content, options);
+                        if (productDto != null)
+                        {
+                            return MapToProduct(productDto);
+                        }
+                    }
+                    catch (JsonException ex)
+                    {
+                        _logger.LogError(ex, "JSON deserialization error for product {Id}", id);
+
+                        // Try to parse as a simple object with basic properties
+                        try
+                        {
+                            var jsonDoc = JsonDocument.Parse(content);
+                            var product = new Product
+                            {
+                                RowKey = id,
+                                ProductName = jsonDoc.RootElement.GetProperty("productName").GetString() ?? "Unknown",
+                                Description = jsonDoc.RootElement.GetProperty("description").GetString() ?? "",
+                                Price = jsonDoc.RootElement.GetProperty("price").GetDouble(),
+                                StockAvailable = jsonDoc.RootElement.GetProperty("stockAvailable").GetInt32(),
+                                ImageUrl = jsonDoc.RootElement.GetProperty("imageUrl").GetString() ?? ""
+                            };
+                            return product;
+                        }
+                        catch (Exception parseEx)
+                        {
+                            _logger.LogError(parseEx, "Failed to parse product {Id} with manual parsing", id);
+                        }
+                    }
                 }
-                _logger.LogWarning("Failed to get product {Id}: {StatusCode}", id, response.StatusCode);
+                else
+                {
+                    _logger.LogWarning("Failed to get product {Id}: {StatusCode}", id, response.StatusCode);
+                }
                 return null;
             }
             catch (Exception ex)
@@ -173,11 +246,10 @@ namespace ABCRetails.Services
 
                 if (imageFile != null)
                 {
-                    // Use multipart form for file upload
                     using var form = new MultipartFormDataContent();
                     form.Add(new StringContent(productDto.ProductName), "ProductName");
                     form.Add(new StringContent(productDto.Description), "Description");
-                    form.Add(new StringContent(productDto.Price.ToString()), "Price");
+                    form.Add(new StringContent(productDto.Price.ToString(CultureInfo.InvariantCulture)), "Price");
                     form.Add(new StringContent(productDto.StockAvailable.ToString()), "StockAvailable");
 
                     var fileContent = new StreamContent(imageFile.OpenReadStream());
@@ -188,19 +260,20 @@ namespace ABCRetails.Services
                     if (response.IsSuccessStatusCode)
                     {
                         var responseContent = await response.Content.ReadAsStringAsync();
-                        var createdDto = JsonSerializer.Deserialize<ProductDto>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                        var createdDto = JsonSerializer.Deserialize<ProductDto>(responseContent, options);
                         return MapToProduct(createdDto!);
                     }
                 }
                 else
                 {
-                    // Use JSON for product without image
                     var content = new StringContent(JsonSerializer.Serialize(productDto), Encoding.UTF8, "application/json");
                     var response = await _httpClient.PostAsync("api/products", content);
                     if (response.IsSuccessStatusCode)
                     {
                         var responseContent = await response.Content.ReadAsStringAsync();
-                        var createdDto = JsonSerializer.Deserialize<ProductDto>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                        var createdDto = JsonSerializer.Deserialize<ProductDto>(responseContent, options);
                         return MapToProduct(createdDto!);
                     }
                 }
@@ -243,7 +316,8 @@ namespace ABCRetails.Services
                 }
 
                 var responseContent = await response.Content.ReadAsStringAsync();
-                var updatedDto = JsonSerializer.Deserialize<ProductDto>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var updatedDto = JsonSerializer.Deserialize<ProductDto>(responseContent, options);
                 return MapToProduct(updatedDto!);
             }
             catch (Exception ex)
@@ -279,7 +353,10 @@ namespace ABCRetails.Services
                 if (response.IsSuccessStatusCode)
                 {
                     var content = await response.Content.ReadAsStringAsync();
-                    var orderDtos = JsonSerializer.Deserialize<List<OrderDto>>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    _logger.LogInformation("Orders API Response: {Content}", content);
+
+                    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    var orderDtos = JsonSerializer.Deserialize<List<OrderDto>>(content, options);
                     return orderDtos?.Select(MapToOrder).ToList() ?? new List<Order>();
                 }
                 _logger.LogWarning("Failed to get orders: {StatusCode}", response.StatusCode);
@@ -300,7 +377,10 @@ namespace ABCRetails.Services
                 if (response.IsSuccessStatusCode)
                 {
                     var content = await response.Content.ReadAsStringAsync();
-                    var orderDto = JsonSerializer.Deserialize<OrderDto>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    _logger.LogInformation("Order API Response for {Id}: {Content}", id, content);
+
+                    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    var orderDto = JsonSerializer.Deserialize<OrderDto>(content, options);
                     return orderDto != null ? MapToOrder(orderDto) : null;
                 }
                 _logger.LogWarning("Failed to get order {Id}: {StatusCode}", id, response.StatusCode);
@@ -324,7 +404,8 @@ namespace ABCRetails.Services
                 if (response.IsSuccessStatusCode)
                 {
                     var responseContent = await response.Content.ReadAsStringAsync();
-                    var createdDto = JsonSerializer.Deserialize<OrderDto>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    var createdDto = JsonSerializer.Deserialize<OrderDto>(responseContent, options);
                     return MapToOrder(createdDto!);
                 }
                 throw new Exception($"Failed to create order: {response.StatusCode}");
@@ -349,7 +430,8 @@ namespace ABCRetails.Services
                 if (response.IsSuccessStatusCode)
                 {
                     var responseContent = await response.Content.ReadAsStringAsync();
-                    var updatedDto = JsonSerializer.Deserialize<OrderDto>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    var updatedDto = JsonSerializer.Deserialize<OrderDto>(responseContent, options);
                     return MapToOrder(updatedDto!);
                 }
                 throw new Exception($"Failed to update order: {response.StatusCode}");
@@ -472,12 +554,12 @@ namespace ABCRetails.Services
         private Customer MapToCustomer(CustomerDto dto) => new Customer
         {
             PartitionKey = "Customer",
-            RowKey = dto.Id,
-            Name = dto.Name,
-            Surname = dto.Surname,
-            Username = dto.Username,
-            Email = dto.Email,
-            ShippingAddress = dto.ShippingAddress
+            RowKey = dto.Id ?? Guid.NewGuid().ToString(),
+            Name = dto.Name ?? string.Empty,
+            Surname = dto.Surname ?? string.Empty,
+            Username = dto.Username ?? string.Empty,
+            Email = dto.Email ?? string.Empty,
+            ShippingAddress = dto.ShippingAddress ?? string.Empty
         };
 
         private CustomerDto MapToCustomerDto(Customer customer) => new CustomerDto(
@@ -486,17 +568,20 @@ namespace ABCRetails.Services
             customer.Username ?? string.Empty,
             customer.Email ?? string.Empty,
             customer.ShippingAddress ?? string.Empty
-        );
+        )
+        {
+            Id = customer.RowKey
+        };
 
         private Product MapToProduct(ProductDto dto) => new Product
         {
             PartitionKey = "Product",
-            RowKey = dto.Id,
-            ProductName = dto.ProductName,
-            Description = dto.Description,
+            RowKey = dto.Id ?? Guid.NewGuid().ToString(),
+            ProductName = dto.ProductName ?? string.Empty,
+            Description = dto.Description ?? string.Empty,
             Price = (double)dto.Price,
             StockAvailable = dto.StockAvailable,
-            ImageUrl = dto.ImageUrl
+            ImageUrl = dto.ImageUrl ?? string.Empty
         };
 
         private ProductDto MapToProductDto(Product product) => new ProductDto(
@@ -505,20 +590,24 @@ namespace ABCRetails.Services
             (decimal)product.Price,
             product.StockAvailable,
             product.ImageUrl ?? string.Empty
-        );
+        )
+        {
+            Id = product.RowKey
+        };
 
         private Order MapToOrder(OrderDto dto) => new Order
         {
             PartitionKey = "Order",
-            RowKey = dto.Id,
-            CustomerId = dto.CustomerId,
-            ProductId = dto.ProductId,
-            ProductName = dto.ProductName,
+            RowKey = dto.Id ?? Guid.NewGuid().ToString(),
+            CustomerId = dto.CustomerId ?? string.Empty,
+            ProductId = dto.ProductId ?? string.Empty,
+            ProductName = dto.ProductName ?? string.Empty,
             Quantity = dto.Quantity,
             UnitPrice = (double)dto.UnitPrice,
             TotalPrice = (double)dto.TotalAmount,
             OrderDate = dto.OrderDateUtc.DateTime,
-            Status = dto.Status
+            Status = dto.Status ?? "Submitted",
+            Username = dto.CustomerId ?? string.Empty // Using CustomerId as Username for now
         };
 
         // DTO records for Functions API

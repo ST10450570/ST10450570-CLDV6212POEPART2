@@ -1,6 +1,6 @@
 ﻿@model ABCRetails.Models.ViewModels.HomeViewModel
 @{
-    ViewData["Title"] = "Home ";
+    ViewData["Title"] = "Home";
 }
 
 <div class="hero-section bg-gradient-primary text-white py-5 mb-5">
@@ -186,6 +186,21 @@
                                         <span class="h5 text-success mb-0">@product.Price.ToString("C")</span>
                                     </div>
                                 </div>
+                                <div class="card-footer bg-transparent">
+                                    <button class="btn btn-primary w-100 add-to-cart-btn"
+                                            data-product-id="@product.ProductId"
+                                            @(product.StockAvailable <= 0 ? "disabled" : "")>
+                                        <i class="fas fa-cart-plus me-2"></i>
+                                        @if (product.StockAvailable <= 0)
+                                        {
+                                            <span>Out of Stock</span>
+                                        }
+                                        else
+                                        {
+                                            <span>Add to Cart</span>
+                                        }
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     }
@@ -204,32 +219,7 @@
             }
         </div>
     </div>
-
-    <!-- Add this CSS -->
-    <style>
-        .product-img-fit {
-            width: 100%;
-            height: 250px; /* keeps cards consistent */
-            object-fit: contain; /* ensures entire image fits */
-            background-color: #f8f9fa; /* neutral background behind transparent/odd aspect images */
-            padding: 5px; /* keeps image from sticking to the edges */
-        }
-
-        .product-image-container {
-            position: relative;
-        }
-
-        .product-stock-badge {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            padding: 0.3rem 0.6rem;
-            border-radius: 0.5rem;
-            font-size: 0.8rem;
-            color: #fff;
-        }
-    </style>
-
+</div>
 
 @section Styles {
     <style>
@@ -311,5 +301,106 @@
             font-weight: 600;
             color: white;
         }
+
+        .product-img-fit {
+            width: 100%;
+            height: 250px; /* keeps cards consistent */
+            object-fit: contain; /* ensures entire image fits */
+            background-color: #f8f9fa; /* neutral background behind transparent/odd aspect images */
+            padding: 5px; /* keeps image from sticking to the edges */
+        }
+
+        .add-to-cart-btn:disabled {
+            background-color: #6c757d;
+            border-color: #6c757d;
+            cursor: not-allowed;
+        }
     </style>
+}
+
+@section Scripts {
+    <script>
+        // Add to cart functionality
+        async function addToCart(productId) {
+            try {
+                // First verify the product exists
+                const verifyResponse = await fetch('@Url.Action("AddToCartFromHome", "Home")', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                    },
+                    body: JSON.stringify({ productId: productId })
+                });
+
+                const verifyResult = await verifyResponse.json();
+
+                if (verifyResult.success) {
+                    // Now add to cart
+                    const response = await fetch('@Url.Action("AddToCart", "Cart")', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                        },
+                        body: JSON.stringify({ productId: productId, quantity: 1 })
+                    });
+
+                    const result = await response.json();
+                    if (result.success) {
+                        showToast('Product added to cart!', 'success');
+                        // Update cart count
+                        updateCartCount();
+                    } else {
+                        showToast(result.message, 'error');
+                    }
+                } else {
+                    showToast(verifyResult.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error adding to cart:', error);
+                showToast('Error adding product to cart.', 'error');
+            }
+        }
+
+        function updateCartCount() {
+            // This would typically fetch the actual cart count from your API
+            // For now, we'll increment a counter
+            const cartBadge = document.getElementById('cartCount');
+            if (cartBadge) {
+                const currentCount = parseInt(cartBadge.textContent) || 0;
+                cartBadge.textContent = currentCount + 1;
+            }
+        }
+
+        function showToast(message, type) {
+            const toast = document.createElement('div');
+            toast.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
+            toast.style.cssText = 'top: 20px; right: 20px; z-index: 1050; min-width: 300px;';
+            toast.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check' : 'exclamation'}-circle me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 3000);
+        }
+
+        // Add event listeners to all "Add to Cart" buttons
+        document.addEventListener('DOMContentLoaded', function() {
+            const addToCartButtons = document.querySelectorAll('.add-to-cart-btn');
+
+            addToCartButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const productId = this.getAttribute('data-product-id');
+                    addToCart(productId);
+                });
+            });
+        });
+    </script>
 }
