@@ -1,8 +1,9 @@
+using System.Diagnostics;
 using ABCRetails.Models;
 using ABCRetails.Models.ViewModels;
 using ABCRetails.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Diagnostics;
 
 namespace ABCRetails.Controllers
 {
@@ -48,6 +49,26 @@ namespace ABCRetails.Controllers
             {
                 RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier
             });
+        }
+
+        // Add these methods to the existing HomeController class
+
+        [Authorize(Roles = "Admin")]
+        public IActionResult AdminDashboard()
+        {
+            return View();
+        }
+
+        [Authorize(Roles = "Customer")]
+        public IActionResult CustomerDashboard()
+        {
+            return View();
+        }
+
+        [Authorize]
+        public IActionResult AccessDenied()
+        {
+            return View();
         }
     }
 }

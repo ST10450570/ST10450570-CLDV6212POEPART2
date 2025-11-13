@@ -1,8 +1,9 @@
-﻿using ABCRetails.Models;
+﻿using System.Threading.Tasks;
+using ABCRetails.Models;
 using ABCRetails.Models.ViewModels;
 using ABCRetails.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Threading.Tasks;
 
 namespace ABCRetails.Controllers
 {
@@ -270,6 +271,31 @@ namespace ABCRetails.Controllers
         {
             model.Customers = await _functionsApiService.GetAllCustomersAsync();
             model.Products = await _functionsApiService.GetAllProductsAsync();
+        }
+
+        // Add this method to the existing OrderController class
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> ProcessOrder(string id)
+        {
+            try
+            {
+                var success = await _functionsApiService.UpdateOrderStatusAsync(id, "PROCESSED");
+                if (success)
+                {
+                    TempData["Success"] = "Order marked as PROCESSED successfully!";
+                }
+                else
+                {
+                    TempData["Error"] = "Failed to update order status.";
+                }
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = $"Error processing order: {ex.Message}";
+            }
+            return RedirectToAction(nameof(Index));
         }
     }
 }

@@ -306,30 +306,33 @@
                                     <i class="fas fa-home me-1"></i> Home
                                 </a>
                             </li>
-                            <li class="nav-item">
-                                <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Customer" ? "active" : "")"
-                                   asp-area="" asp-controller="Customer" asp-action="Index">
-                                    <i class="fas fa-users me-1"></i> Customers
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Product" ? "active" : "")"
-                                   asp-area="" asp-controller="Product" asp-action="Index">
-                                    <i class="fas fa-box me-1"></i> Products
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Order" ? "active" : "")"
-                                   asp-area="" asp-controller="Order" asp-action="Index">
-                                    <i class="fas fa-shopping-cart me-1"></i> Orders
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Upload" ? "active" : "")"
-                                   asp-area="" asp-controller="Upload" asp-action="Index">
-                                    <i class="fas fa-cloud-upload-alt me-1"></i> Upload Files
-                                </a>
-                            </li>
+                            @if (User.Identity.IsAuthenticated)
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Customer" ? "active" : "")"
+                                       asp-area="" asp-controller="Customer" asp-action="Index">
+                                        <i class="fas fa-users me-1"></i> Customers
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Product" ? "active" : "")"
+                                       asp-area="" asp-controller="Product" asp-action="Index">
+                                        <i class="fas fa-box me-1"></i> Products
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Order" ? "active" : "")"
+                                       asp-area="" asp-controller="Order" asp-action="Index">
+                                        <i class="fas fa-shopping-cart me-1"></i> Orders
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Upload" ? "active" : "")"
+                                       asp-area="" asp-controller="Upload" asp-action="Index">
+                                        <i class="fas fa-cloud-upload-alt me-1"></i> Upload Files
+                                    </a>
+                                </li>
+                            }
                             <li class="nav-item">
                                 <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Home" && ViewContext.RouteData.Values["Action"]?.ToString() == "Privacy" ? "active" : "")"
                                    asp-area="" asp-controller="Home" asp-action="Privacy">
@@ -343,11 +346,53 @@
                                 </a>
                             </li>
                         </ul>
-                        <div class="navbar-nav">
-                            <span class="navbar-text text-light">
-                                <i class="fas fa-calendar-alt me-1"></i> @DateTime.Now.ToString("MMM dd, yyyy")
-                            </span>
-                        </div>
+                        <ul class="navbar-nav">
+                            @if (User.Identity.IsAuthenticated)
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Cart" ? "active" : "")"
+                                       asp-area="" asp-controller="Cart" asp-action="Index">
+                                        <i class="fas fa-shopping-cart me-1"></i> Cart
+                                        <span id="cartCount" class="badge bg-warning ms-1">0</span>
+                                    </a>
+                                </li>
+                                <li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                                        <i class="fas fa-user me-1"></i> @User.Identity.Name
+                                    </a>
+                                    <ul class="dropdown-menu">
+                                        @{
+                                            // Get the user's role from claims
+                                            var roleClaim = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role);
+                                            var userRole = roleClaim?.Value ?? "User";
+                                        }
+                                        <li><span class="dropdown-item-text">Role: @userRole</span></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li>
+                                            <form asp-controller="Login" asp-action="Logout" method="post" class="d-inline">
+                                                <button type="submit" class="dropdown-item">
+                                                    <i class="fas fa-sign-out-alt me-1"></i> Logout
+                                                </button>
+                                            </form>
+                                        </li>
+                                    </ul>
+                                </li>
+                            }
+                            else
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Login" ? "active" : "")"
+                                       asp-area="" asp-controller="Login" asp-action="Index">
+                                        <i class="fas fa-sign-in-alt me-1"></i> Login
+                                    </a>
+                                </li>
+                            }
+                            <li class="nav-item">
+                                <span class="navbar-text text-light ms-2">
+                                    <i class="fas fa-calendar-alt me-1"></i> @DateTime.Now.ToString("MMM dd, yyyy")
+                                </span>
+                            </li>
+                        </ul>
                     </div>
                 </div>
             </nav>
