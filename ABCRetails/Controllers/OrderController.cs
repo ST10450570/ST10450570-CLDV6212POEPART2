@@ -265,7 +265,7 @@ namespace ABCRetails.Controllers
                 return NotFound();
             }
 
-            // Remove unnecessary model state validation
+            // CRITICAL FIX: Remove validation for properties we don't need
             ModelState.Remove("Customers");
             ModelState.Remove("Products");
             ModelState.Remove("StatusOptions");
@@ -273,68 +273,79 @@ namespace ABCRetails.Controllers
             ModelState.Remove("Order.RowKey");
             ModelState.Remove("Order.Timestamp");
             ModelState.Remove("Order.ETag");
-            ModelState.Remove("Order.CustomerId");
-            ModelState.Remove("Order.Username");
-            ModelState.Remove("Order.ProductId");
-            ModelState.Remove("Order.ProductName");
-            ModelState.Remove("Order.UnitPrice");
-            ModelState.Remove("Order.ProductImageUrl");
 
-            if (ModelState.IsValid)
+            // Add explicit logging
+            _logger.LogInformation("Starting order edit for ID: {OrderId}", id);
+            _logger.LogInformation("Model State Valid: {IsValid}", ModelState.IsValid);
+
+            if (!ModelState.IsValid)
             {
-                try
+                // Log all validation errors
+                foreach (var state in ModelState)
                 {
-                    var originalOrder = await _functionsApiService.GetOrderAsync(id);
-                    if (originalOrder == null)
+                    foreach (var error in state.Value.Errors)
                     {
-                        TempData["Error"] = "Order not found. It may have been deleted.";
-                        return RedirectToAction(nameof(Index));
+                        _logger.LogWarning("Validation error for {Key}: {Error}",
+                            state.Key, error.ErrorMessage);
                     }
+                }
 
-                    // Update only the editable fields
-                    originalOrder.Quantity = model.Order.Quantity;
-                    originalOrder.Status = model.Order.Status;
-                    originalOrder.OrderDate = DateTime.SpecifyKind(model.Order.OrderDate, DateTimeKind.Utc);
-                    originalOrder.TotalPrice = originalOrder.UnitPrice * model.Order.Quantity;
+                // Repopulate dropdowns
+                model.Customers = await _functionsApiService.GetAllCustomersAsync();
+                model.Products = await _functionsApiService.GetAllProductsAsync();
+                model.StatusOptions = new List<string> { "Submitted", "Processing", "Completed", "Cancelled" };
 
-                    _logger.LogInformation("Updating order {OrderId} with status: {Status}", id, originalOrder.Status);
+                TempData["Error"] = "Please correct the validation errors.";
+                return View(model);
+            }
 
-                    var updatedOrder = await _functionsApiService.UpdateOrderAsync(originalOrder);
-
-                    _logger.LogInformation("Order {OrderId} updated successfully. New status: {Status}", id, updatedOrder.Status);
-                    TempData["Success"] = "Order updated successfully!";
+            try
+            {
+                var originalOrder = await _functionsApiService.GetOrderAsync(id);
+                if (originalOrder == null)
+                {
+                    _logger.LogWarning("Order {OrderId} not found", id);
+                    TempData["Error"] = "Order not found. It may have been deleted.";
                     return RedirectToAction(nameof(Index));
                 }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error updating order {OrderId}", id);
-                    ModelState.AddModelError("", $"Error updating order: {ex.Message}");
 
-                    // Log detailed error information
-                    _logger.LogError("Order update failed for model: {@Model}", new
-                    {
-                        model.Id,
-                        model.Order.Quantity,
-                        model.Order.Status,
-                        model.Order.OrderDate
-                    });
-                }
+                _logger.LogInformation("Original Order - Quantity: {Quantity}, Status: {Status}, Date: {Date}",
+                    originalOrder.Quantity, originalOrder.Status, originalOrder.OrderDate);
+
+                // Update only the editable fields
+                originalOrder.Quantity = model.Order.Quantity;
+                originalOrder.Status = model.Order.Status;
+
+                // CRITICAL FIX: Properly handle DateTime
+                originalOrder.OrderDate = DateTime.SpecifyKind(
+                    model.Order.OrderDate.Date,
+                    DateTimeKind.Utc
+                );
+
+                // Recalculate total price
+                originalOrder.TotalPrice = originalOrder.UnitPrice * model.Order.Quantity;
+
+                _logger.LogInformation("Updated Order - Quantity: {Quantity}, Status: {Status}, Date: {Date}, Total: {Total}",
+                    originalOrder.Quantity, originalOrder.Status, originalOrder.OrderDate, originalOrder.TotalPrice);
+
+                var updatedOrder = await _functionsApiService.UpdateOrderAsync(originalOrder);
+
+                _logger.LogInformation("Order {OrderId} updated successfully", id);
+                TempData["Success"] = "Order updated successfully!";
+                return RedirectToAction(nameof(Index));
             }
-            else
+            catch (Exception ex)
             {
-                // Log model state errors for debugging
-                var errors = ModelState.Values.SelectMany(v => v.Errors);
-                foreach (var error in errors)
-                {
-                    _logger.LogWarning("Model validation error: {Error}", error.ErrorMessage);
-                }
-            }
+                _logger.LogError(ex, "Error updating order {OrderId}", id);
 
-            // Repopulate dropdowns if we need to return to the form
-            model.Customers = await _functionsApiService.GetAllCustomersAsync();
-            model.Products = await _functionsApiService.GetAllProductsAsync();
-            model.StatusOptions = new List<string> { "Submitted", "Processing", "Completed", "Cancelled" };
-            return View(model);
+                // Repopulate dropdowns
+                model.Customers = await _functionsApiService.GetAllCustomersAsync();
+                model.Products = await _functionsApiService.GetAllProductsAsync();
+                model.StatusOptions = new List<string> { "Submitted", "Processing", "Completed", "Cancelled" };
+
+                TempData["Error"] = $"Error updating order: {ex.Message}";
+                return View(model);
+            }
         }
 
         [HttpPost]

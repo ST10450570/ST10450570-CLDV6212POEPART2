@@ -16,8 +16,7 @@
 
 <div class="row">
     <div class="col-md-12">
-
-        <!-- IMPORTANT: method="post" + asp-route-id + antiforgery token -->
+        <!-- CRITICAL FIX: Explicitly set method="post" and asp-route-id -->
         <form asp-action="Edit"
               asp-controller="Order"
               asp-route-id="@Model.Id"
@@ -28,12 +27,8 @@
 
             <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
-            <!-- Hidden fields required for correct binding -->
+            <!-- Hidden fields - CRITICAL: These must be present -->
             <input type="hidden" asp-for="Id" />
-            <input type="hidden" asp-for="Order.PartitionKey" />
-            <input type="hidden" asp-for="Order.RowKey" />
-            <input type="hidden" asp-for="Order.Timestamp" />
-            <input type="hidden" asp-for="Order.ETag" />
             <input type="hidden" asp-for="Order.CustomerId" />
             <input type="hidden" asp-for="Order.Username" />
             <input type="hidden" asp-for="Order.ProductId" />
@@ -85,12 +80,15 @@
 
                     <div class="col-md-4">
                         <label class="form-label fw-semibold">Total Price</label>
-                        <input value="@Model.Order.TotalPrice.ToString("C")" class="form-control" readonly />
+                        <input value="@((Model.Order.UnitPrice * Model.Order.Quantity).ToString("C"))" class="form-control" readonly />
                     </div>
 
                     <div class="col-md-4">
                         <label asp-for="Order.OrderDate" class="form-label fw-semibold"></label>
-                        <input asp-for="Order.OrderDate" class="form-control" type="date" />
+                        <input asp-for="Order.OrderDate"
+                               class="form-control"
+                               type="date"
+                               value="@Model.Order.OrderDate.ToString("yyyy-MM-dd")" />
                         <span asp-validation-for="Order.OrderDate" class="text-danger"></span>
                     </div>
 
@@ -114,9 +112,10 @@
                 <a asp-action="Index" class="btn btn-outline-secondary">
                     <i class="fas fa-arrow-left me-1"></i> Back to List
                 </a>
-                <button type="submit" class="btn btn-primary px-4">Save Changes</button>
+                <button type="submit" class="btn btn-primary px-4">
+                    <i class="fas fa-save me-1"></i> Save Changes
+                </button>
             </div>
-
         </form>
     </div>
 </div>
@@ -202,5 +201,12 @@
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
-
+    <script>
+        // Add loading indicator on form submit
+        document.querySelector('form').addEventListener('submit', function(e) {
+            const submitBtn = this.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Saving...';
+        });
+    </script>
 }
