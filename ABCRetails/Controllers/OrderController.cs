@@ -6,7 +6,7 @@ using ABCRetails.Models.ViewModels;
 using ABCRetails.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging; // Add this using statement
+using Microsoft.Extensions.Logging;
 
 namespace ABCRetails.Controllers
 {
@@ -14,34 +14,48 @@ namespace ABCRetails.Controllers
     {
         private readonly IFunctionsApiService _functionsApiService;
         private readonly AuthDbContext _authContext;
-        private readonly ILogger<OrderController> _logger; // Add this field
+        private readonly ILogger<OrderController> _logger;
 
         public OrderController(
             IFunctionsApiService functionsApiService,
             AuthDbContext authContext,
-            ILogger<OrderController> logger) // Add this parameter
+            ILogger<OrderController> logger)
         {
             _functionsApiService = functionsApiService;
             _authContext = authContext;
-            _logger = logger; // Initialize the logger
+            _logger = logger;
         }
 
-        [Authorize]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Index(string searchTerm)
         {
             var orders = string.IsNullOrEmpty(searchTerm)
                 ? await _functionsApiService.GetAllOrdersAsync()
                 : await _functionsApiService.SearchOrdersAsync(searchTerm);
 
-            // If user is customer, only show their orders
-            if (User.IsInRole("Customer"))
+            ViewBag.SearchTerm = searchTerm;
+            return View("Index", orders);
+        }
+
+        [Authorize(Roles = "Customer")]
+        public async Task<IActionResult> MyOrders(string searchTerm)
+        {
+            var currentUsername = User.FindFirst(ClaimTypes.Name)?.Value;
+            var allOrders = await _functionsApiService.GetAllOrdersAsync();
+            var myOrders = allOrders.Where(o => o.Username?.Equals(currentUsername, StringComparison.OrdinalIgnoreCase) == true).ToList();
+
+            // Apply search filter if provided
+            if (!string.IsNullOrEmpty(searchTerm))
             {
-                var currentUsername = User.FindFirst(ClaimTypes.Name)?.Value;
-                orders = orders.Where(o => o.Username == currentUsername).ToList();
+                myOrders = myOrders.Where(o =>
+                    (o.ProductName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true) ||
+                    (o.Status?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true) ||
+                    (o.RowKey?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true)
+                ).ToList();
             }
 
             ViewBag.SearchTerm = searchTerm;
-            return View(orders);
+            return View("MyOrders", myOrders);
         }
 
         [Authorize(Roles = "Admin")]
@@ -64,7 +78,6 @@ namespace ABCRetails.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create(OrderCreateViewModel model)
         {
-            // Remove validation for fields we don't need to validate
             ModelState.Remove("Customers");
             ModelState.Remove("Products");
 
@@ -103,7 +116,7 @@ namespace ABCRetails.Controllers
                         OrderDate = utcOrderDate,
                         UnitPrice = product.Price,
                         TotalPrice = product.Price * model.Quantity,
-                        Status = model.Status, // This should now work
+                        Status = model.Status, // This now uses the selected status
                         ProductImageUrl = product.ImageUrl
                     };
 
@@ -131,20 +144,17 @@ namespace ABCRetails.Controllers
             {
                 return NotFound();
             }
+
             var order = await _functionsApiService.GetOrderAsync(id);
             if (order == null)
             {
                 return NotFound();
             }
 
-            // Customers can only see their own orders
-            if (User.IsInRole("Customer"))
+            // Check if user has permission to view this order
+            if (!await CanAccessOrder(order))
             {
-                var currentUsername = User.FindFirst(ClaimTypes.Name)?.Value;
-                if (order.Username != currentUsername)
-                {
-                    return RedirectToAction("AccessDenied", "Home");
-                }
+                return RedirectToAction("AccessDenied", "Home");
             }
 
             return View(order);
@@ -255,17 +265,25 @@ namespace ABCRetails.Controllers
                 return NotFound();
             }
 
-            // Remove ModelState validation for system properties
+            // Remove unnecessary model state validation
+            ModelState.Remove("Customers");
+            ModelState.Remove("Products");
+            ModelState.Remove("StatusOptions");
             ModelState.Remove("Order.PartitionKey");
             ModelState.Remove("Order.RowKey");
             ModelState.Remove("Order.Timestamp");
             ModelState.Remove("Order.ETag");
+            ModelState.Remove("Order.CustomerId");
+            ModelState.Remove("Order.Username");
+            ModelState.Remove("Order.ProductId");
+            ModelState.Remove("Order.ProductName");
+            ModelState.Remove("Order.UnitPrice");
+            ModelState.Remove("Order.ProductImageUrl");
 
             if (ModelState.IsValid)
             {
                 try
                 {
-                    // Get the original order to preserve system properties
                     var originalOrder = await _functionsApiService.GetOrderAsync(id);
                     if (originalOrder == null)
                     {
@@ -273,18 +291,17 @@ namespace ABCRetails.Controllers
                         return RedirectToAction(nameof(Index));
                     }
 
-                    // Update ONLY the editable fields
+                    // Update only the editable fields
                     originalOrder.Quantity = model.Order.Quantity;
                     originalOrder.Status = model.Order.Status;
                     originalOrder.OrderDate = DateTime.SpecifyKind(model.Order.OrderDate, DateTimeKind.Utc);
-
-                    // Recalculate total price
                     originalOrder.TotalPrice = originalOrder.UnitPrice * model.Order.Quantity;
 
-                    // Update the order using the service
-                    await _functionsApiService.UpdateOrderAsync(originalOrder);
+                    _logger.LogInformation("Updating order {OrderId} with status: {Status}", id, originalOrder.Status);
 
-                    _logger.LogInformation("Order {OrderId} updated successfully", id);
+                    var updatedOrder = await _functionsApiService.UpdateOrderAsync(originalOrder);
+
+                    _logger.LogInformation("Order {OrderId} updated successfully. New status: {Status}", id, updatedOrder.Status);
                     TempData["Success"] = "Order updated successfully!";
                     return RedirectToAction(nameof(Index));
                 }
@@ -292,10 +309,28 @@ namespace ABCRetails.Controllers
                 {
                     _logger.LogError(ex, "Error updating order {OrderId}", id);
                     ModelState.AddModelError("", $"Error updating order: {ex.Message}");
+
+                    // Log detailed error information
+                    _logger.LogError("Order update failed for model: {@Model}", new
+                    {
+                        model.Id,
+                        model.Order.Quantity,
+                        model.Order.Status,
+                        model.Order.OrderDate
+                    });
+                }
+            }
+            else
+            {
+                // Log model state errors for debugging
+                var errors = ModelState.Values.SelectMany(v => v.Errors);
+                foreach (var error in errors)
+                {
+                    _logger.LogWarning("Model validation error: {Error}", error.ErrorMessage);
                 }
             }
 
-            // Repopulate dropdowns if there was an error
+            // Repopulate dropdowns if we need to return to the form
             model.Customers = await _functionsApiService.GetAllCustomersAsync();
             model.Products = await _functionsApiService.GetAllProductsAsync();
             model.StatusOptions = new List<string> { "Submitted", "Processing", "Completed", "Cancelled" };
@@ -328,21 +363,26 @@ namespace ABCRetails.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        [HttpGet]
-        [Authorize(Roles = "Customer")]
-        public async Task<IActionResult> MyOrders()
-        {
-            var currentUsername = User.FindFirst(ClaimTypes.Name)?.Value;
-            var allOrders = await _functionsApiService.GetAllOrdersAsync();
-            var myOrders = allOrders.Where(o => o.Username == currentUsername).ToList();
-
-            return View(myOrders);
-        }
-
         private async Task PopulateDropdowns(OrderCreateViewModel model)
         {
             model.Customers = await _functionsApiService.GetAllCustomersAsync();
             model.Products = await _functionsApiService.GetAllProductsAsync();
+        }
+
+        private async Task<bool> CanAccessOrder(Order order)
+        {
+            if (User.IsInRole("Admin"))
+            {
+                return true;
+            }
+
+            if (User.IsInRole("Customer"))
+            {
+                var currentUsername = User.FindFirst(ClaimTypes.Name)?.Value;
+                return order.Username?.Equals(currentUsername, StringComparison.OrdinalIgnoreCase) == true;
+            }
+
+            return false;
         }
     }
 }

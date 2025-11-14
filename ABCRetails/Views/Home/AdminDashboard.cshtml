@@ -17,7 +17,7 @@
 
 <!-- Quick Stats -->
 <div class="row mb-5">
-    <div class="col-md-3 mb-4">
+    <div class="col-md-4 mb-4">
         <div class="card stats-card bg-primary text-white h-100">
             <div class="card-body">
                 <div class="d-flex align-items-center">
@@ -39,29 +39,7 @@
         </div>
     </div>
 
-    <div class="col-md-3 mb-4">
-        <div class="card stats-card bg-success text-white h-100">
-            <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <div class="flex-grow-1">
-                        <h6 class="card-title text-uppercase small opacity-75">Pending Orders</h6>
-                        <h2 class="card-text display-6 fw-bold">@ViewBag.PendingOrders</h2>
-                        <small class="opacity-75">Awaiting processing</small>
-                    </div>
-                    <div class="flex-shrink-0">
-                        <i class="fas fa-clock fa-3x opacity-50"></i>
-                    </div>
-                </div>
-            </div>
-            <div class="card-footer bg-success-dark">
-                <a asp-controller="Order" asp-action="Index" class="text-white text-decoration-none">
-                    Process Orders <i class="fas fa-arrow-right ms-1"></i>
-                </a>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-3 mb-4">
+    <div class="col-md-4 mb-4">
         <div class="card stats-card bg-warning text-dark h-100">
             <div class="card-body">
                 <div class="d-flex align-items-center">
@@ -83,7 +61,7 @@
         </div>
     </div>
 
-    <div class="col-md-3 mb-4">
+    <div class="col-md-4 mb-4">
         <div class="card stats-card bg-info text-white h-100">
             <div class="card-body">
                 <div class="d-flex align-items-center">
@@ -233,10 +211,6 @@
             background-color: rgba(0, 0, 0, 0.1) !important;
         }
 
-        .bg-success-dark {
-            background-color: rgba(0, 0, 0, 0.1) !important;
-        }
-
         .bg-warning-dark {
             background-color: rgba(0, 0, 0, 0.1) !important;
         }
@@ -273,14 +247,12 @@
 
         async function loadDashboardData() {
             try {
-                // Load recent orders via AJAX
                 const ordersResponse = await fetch('@Url.Action("GetRecentOrders", "Home")');
                 if (ordersResponse.ok) {
                     const orders = await ordersResponse.json();
                     displayRecentOrders(orders);
                 }
 
-                // Load low stock products via AJAX
                 const productsResponse = await fetch('@Url.Action("GetLowStockProducts", "Home")');
                 if (productsResponse.ok) {
                     const products = await productsResponse.json();

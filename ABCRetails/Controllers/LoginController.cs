@@ -1,11 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+﻿using System.Security.Claims;
+using ABCRetails.Data;
 using ABCRetails.Models;
 using ABCRetails.Models.ViewModels;
-using ABCRetails.Data;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using System.Security.Claims;
+using ABCRetails.Services;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ABCRetails.Controllers
 {
@@ -129,21 +130,25 @@ namespace ABCRetails.Controllers
             return View(new User());
         }
 
+        // LoginController.cs - Update the Register method
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Register(User user, string password)
+        public async Task<IActionResult> Register(User user, string password, string confirmPassword, string? name, string? surname, string? shippingAddress)
         {
-            // Remove this validation - password is not part of User model
-            if (!ModelState.IsValid)
+            // Validate required fields
+            if (string.IsNullOrWhiteSpace(user.Username) ||
+                string.IsNullOrWhiteSpace(user.Email) ||
+                string.IsNullOrWhiteSpace(password))
             {
-                // Check only for required User fields
-                if (string.IsNullOrWhiteSpace(user.Username) ||
-                    string.IsNullOrWhiteSpace(user.Email) ||
-                    string.IsNullOrWhiteSpace(password))
-                {
-                    ModelState.AddModelError("", "Username, Email and Password are required.");
-                    return View(user);
-                }
+                ModelState.AddModelError("", "Username, Email and Password are required.");
+                return View(user);
+            }
+
+            // Validate password confirmation
+            if (password != confirmPassword)
+            {
+                ModelState.AddModelError("", "Password and confirmation password do not match.");
+                return View(user);
             }
 
             try
@@ -162,15 +167,47 @@ namespace ABCRetails.Controllers
                     return View(user);
                 }
 
-                // Force Customer role for new registrations (security measure)
-                user.Role = "Customer";
+                // Set user properties
                 user.PasswordHash = HashPassword(password);
                 user.CreatedAt = DateTime.UtcNow;
+
+                // Only set customer-specific fields if role is Customer
+                if (user.Role == "Customer")
+                {
+                    user.Name = name ?? user.Username; // Use provided name or username as fallback
+                    user.Surname = surname ?? "";
+                    user.ShippingAddress = shippingAddress ?? "";
+                }
+                else
+                {
+                    // Clear customer fields for admin users
+                    user.Name = null;
+                    user.Surname = null;
+                    user.ShippingAddress = null;
+                }
 
                 _context.Users.Add(user);
                 await _context.SaveChangesAsync();
 
-                _logger.LogInformation("New user registered: {Username}", user.Username);
+                _logger.LogInformation("New user registered: {Username} with role {Role}", user.Username, user.Role);
+
+                // Sync to table storage only for customers
+                if (user.Role == "Customer")
+                {
+                    try
+                    {
+                        var syncService = HttpContext.RequestServices.GetRequiredService<ICustomerSyncService>();
+                        await syncService.SyncCustomerToTableStorageAsync(user);
+
+                        // Update the user with sync info
+                        await _context.SaveChangesAsync();
+                    }
+                    catch (Exception syncEx)
+                    {
+                        _logger.LogWarning(syncEx, "Failed to sync customer {Username} to table storage, but user was created in database", user.Username);
+                        // Continue with login even if sync fails
+                    }
+                }
 
                 // Auto-login after registration
                 var loginModel = new LoginViewModel
@@ -180,7 +217,6 @@ namespace ABCRetails.Controllers
                     RememberMe = false
                 };
 
-                // Call login directly instead of redirecting to Index action
                 return await LoginAfterRegistration(loginModel);
             }
             catch (Exception ex)
@@ -188,6 +224,7 @@ namespace ABCRetails.Controllers
                 _logger.LogError(ex, "Error registering user {Username}", user.Username);
                 ModelState.AddModelError("", $"An error occurred during registration: {ex.Message}");
             }
+
             return View(user);
         }
 

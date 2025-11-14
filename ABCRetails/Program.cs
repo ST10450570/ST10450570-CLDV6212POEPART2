@@ -15,6 +15,9 @@ namespace ABCRetails
             // Add services to the container.
             builder.Services.AddControllersWithViews();
 
+            // Add this to your service registration
+            builder.Services.AddScoped<ICustomerSyncService, CustomerSyncService>(); 
+
             // Configure HttpClient for Functions API
             builder.Services.AddHttpClient<IFunctionsApiService, FunctionsApiService>(client =>
             {

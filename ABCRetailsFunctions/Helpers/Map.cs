@@ -30,7 +30,7 @@ public static class Map
     public static OrderDto ToDto(OrderEntity e)
     {
         var unitPrice = (decimal)e.UnitPrice;
-        var total = unitPrice * e.Quantity;
+        var totalPrice = (decimal)e.TotalPrice;
 
         return new OrderDto(
             Id: e.RowKey,
@@ -39,10 +39,11 @@ public static class Map
             ProductName: e.ProductName,
             Quantity: e.Quantity,
             UnitPrice: unitPrice,
-            TotalAmount: total,
+            TotalAmount: totalPrice,
             OrderDateUtc: e.OrderDateUtc,
-            Status: e.Status ?? "Submitted", // Ensure status is never null
-            ProductImageUrl: e.ProductImageUrl ?? "" // Ensure image URL is never null
+            Status: e.Status ?? "Submitted",
+            ProductImageUrl: e.ProductImageUrl ?? "",
+            Username: e.Username ?? e.CustomerId // Add username as the last parameter
         );
     }
 }

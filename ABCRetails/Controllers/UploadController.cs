@@ -169,5 +169,55 @@ namespace ABCRetails.Controllers
                 return Json(new { success = false, message = "Error getting file details" });
             }
         }
+
+        [HttpGet]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> DownloadFile(string fileName)
+        {
+            try
+            {
+                var file = await _functionsApiService.GetUploadedFileAsync(fileName);
+                if (file == null || string.IsNullOrEmpty(file.BlobUrl))
+                {
+                    TempData["Error"] = "File not found.";
+                    return RedirectToAction("UploadedFiles");
+                }
+
+                // Download the file from blob storage via your Functions API
+                var fileBytes = await _functionsApiService.DownloadFileAsync(fileName);
+                if (fileBytes == null || fileBytes.Length == 0)
+                {
+                    TempData["Error"] = "Failed to download file.";
+                    return RedirectToAction("UploadedFiles");
+                }
+
+                // Determine content type based on file extension
+                var contentType = GetContentType(fileName);
+
+                return File(fileBytes, contentType, fileName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error downloading file {FileName}", fileName);
+                TempData["Error"] = "Error downloading file.";
+                return RedirectToAction("UploadedFiles");
+            }
+        }
+
+        private string GetContentType(string fileName)
+        {
+            var extension = Path.GetExtension(fileName).ToLowerInvariant();
+            return extension switch
+            {
+                ".pdf" => "application/pdf",
+                ".jpg" or ".jpeg" => "image/jpeg",
+                ".png" => "image/png",
+                ".doc" => "application/msword",
+                ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                ".xls" => "application/vnd.ms-excel",
+                ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                _ => "application/octet-stream"
+            };
+        }
     }
 }

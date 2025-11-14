@@ -41,11 +41,11 @@ public class OrderEntity : ITableEntity
     public ETag ETag { get; set; }
 
     public string CustomerId { get; set; } = "";
+    public string Username { get; set; } = "";  // Make sure this exists
     public string ProductId { get; set; } = "";
     public string ProductName { get; set; } = "";
     public int Quantity { get; set; }
-    public double UnitPrice { get; set; } // stored as double
-
+    public double UnitPrice { get; set; }
     public double TotalPrice { get; set; }
     public DateTimeOffset OrderDateUtc { get; set; } = DateTimeOffset.UtcNow;
     public string Status { get; set; } = "Submitted";

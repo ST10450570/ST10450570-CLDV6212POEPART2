@@ -10,10 +10,30 @@
     </h1>
 </div>
 
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-8">
+                <input type="text" name="searchTerm" class="form-control" placeholder="Search my orders by product name or status..." value="@ViewBag.SearchTerm">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fas fa-search me-2"></i>Search
+                </button>
+            </div>
+            <div class="col-md-2">
+                <a asp-action="MyOrders" class="btn btn-outline-secondary w-100">
+                    <i class="fas fa-refresh me-2"></i>Clear
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div class="card shadow-sm">
     <div class="card-header bg-light">
         <h5 class="card-title mb-0">
-            <i class="fas fa-history me-2"></i>Order History
+            <i class="fas fa-history me-2"></i>My Order History
             <span class="badge bg-secondary ms-2">@Model.Count()</span>
         </h5>
     </div>
@@ -53,7 +73,7 @@
                                     }
                                 </td>
                                 <td>
-                                    <span class="badge bg-info">@item.OrderId</span>
+                                    <span class="badge bg-info">@item.RowKey</span>
                                 </td>
                                 <td>
                                     <strong>@item.ProductName</strong>
@@ -70,15 +90,18 @@
                                 </td>
                                 <td>
                                     <span class="text-muted">@item.OrderDate.ToString("MMM dd, yyyy")</span>
+                                    <br />
+                                    <small class="text-muted">@item.OrderDate.ToString("hh:mm tt")</small>
                                 </td>
                                 <td>
                                     @{
-                                        var statusClass = item.Status switch
+                                        var statusClass = item.Status?.ToLower() switch
                                         {
-                                            "Submitted" => "bg-info",
-                                            "Processing" => "bg-warning",
-                                            "Completed" => "bg-success",
-                                            "Cancelled" => "bg-danger",
+                                            "submitted" => "bg-info",
+                                            "processing" => "bg-warning",
+                                            "completed" => "bg-success",
+                                            "cancelled" => "bg-danger",
+                                            "processed" => "bg-primary",
                                             _ => "bg-secondary"
                                         };
                                     }
@@ -86,7 +109,7 @@
                                 </td>
                                 <td>
                                     <a asp-action="Details" asp-route-id="@item.RowKey"
-                                       class="btn btn-outline-info btn-sm" title="Details">
+                                       class="btn btn-outline-info btn-sm" title="View Details">
                                         <i class="fas fa-eye"></i> Details
                                     </a>
                                 </td>
@@ -102,9 +125,18 @@
                 <i class="fas fa-shopping-cart fa-4x text-muted mb-3"></i>
                 <h4 class="text-muted">No Orders Found</h4>
                 <p class="text-muted">You haven't placed any orders yet.</p>
-                <a asp-controller="Product" asp-action="Index" class="btn btn-primary mt-2">
-                    <i class="fas fa-store me-2"></i>Start Shopping
-                </a>
+                @if (string.IsNullOrEmpty(ViewBag.SearchTerm))
+                {
+                    <a asp-controller="Product" asp-action="Index" class="btn btn-primary mt-2">
+                        <i class="fas fa-store me-2"></i>Start Shopping
+                    </a>
+                }
+                else
+                {
+                    <a asp-action="MyOrders" class="btn btn-outline-primary mt-2">
+                        <i class="fas fa-list me-2"></i>View All Orders
+                    </a>
+                }
             </div>
         }
     </div>
@@ -151,6 +183,10 @@
             background-color: rgba(0, 123, 255, 0.05);
             transform: translateY(-1px);
             transition: all 0.2s ease;
+        }
+
+        .badge {
+            font-size: 0.75em;
         }
     </style>
 }

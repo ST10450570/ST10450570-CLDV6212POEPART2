@@ -76,7 +76,6 @@ namespace ABCRetails.Controllers
                     return Json(new { success = false, message = "Quantity must be at least 1." });
                 }
 
-                // Add logging to debug
                 _logger.LogInformation("Attempting to add product {ProductId} to cart for user {UserId}", productId, userId);
 
                 var product = await _functionsApiService.GetProductAsync(productId);
@@ -129,7 +128,6 @@ namespace ABCRetails.Controllers
             }
         }
 
-        // Add this new method to get cart count
         [HttpGet]
         public async Task<JsonResult> GetCartCount()
         {
@@ -250,6 +248,16 @@ namespace ABCRetails.Controllers
                     return RedirectToAction("Index", "Login");
                 }
 
+                // Get the customer GUID from the API using the username
+                var customers = await _functionsApiService.GetAllCustomersAsync();
+                var customer = customers.FirstOrDefault(c => c.Username == user.Username);
+
+                if (customer == null)
+                {
+                    TempData["Error"] = "Customer profile not found. Please contact support.";
+                    return RedirectToAction("Index");
+                }
+
                 var cartItems = await _authContext.Cart
                     .Where(c => c.UserId == userId.Value)
                     .ToListAsync();
@@ -269,7 +277,7 @@ namespace ABCRetails.Controllers
                         var order = new Order
                         {
                             RowKey = Guid.NewGuid().ToString(),
-                            CustomerId = user.Id.ToString(),
+                            CustomerId = customer.CustomerId, // Use the GUID from the Customer table
                             Username = user.Username,
                             ProductId = product.ProductId,
                             ProductName = product.ProductName,
@@ -295,7 +303,7 @@ namespace ABCRetails.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error during checkout for user {UserId}", userId);
-                TempData["Error"] = "Error processing your order. Please try again.";
+                TempData["Error"] = $"Error processing your order: {ex.Message}";
                 return RedirectToAction("Index");
             }
         }
@@ -315,12 +323,5 @@ namespace ABCRetails.Controllers
             }
             return null;
         }
-    }
-
-
-    public class AddToCartRequest
-    {
-        public string productId { get; set; }
-        public int quantity { get; set; } = 1;
     }
 }

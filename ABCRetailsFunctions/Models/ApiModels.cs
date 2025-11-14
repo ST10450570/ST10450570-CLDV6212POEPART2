@@ -5,4 +5,4 @@ public record CustomerDto(string Id, string Name, string Surname, string Usernam
 public record ProductDto(string Id, string ProductName, string Description, decimal Price, int StockAvailable, string ImageUrl);
 public record OrderDto(
     string Id, string CustomerId, string ProductId, string ProductName,
-    int Quantity, decimal UnitPrice, decimal TotalAmount, DateTimeOffset OrderDateUtc, string Status, string ProductImageUrl);
+    int Quantity, decimal UnitPrice, decimal TotalAmount, DateTimeOffset OrderDateUtc, string Status, string ProductImageUrl, string Username);

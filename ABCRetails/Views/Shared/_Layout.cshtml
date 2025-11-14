@@ -504,29 +504,69 @@
                 });
             });
 
-            // Update cart count on page load
+            // Update cart count on page load and set up periodic updates
             updateCartCount();
+
+            // Update cart count every 30 seconds to stay synchronized
+            setInterval(updateCartCount, 30000);
+
+            // Also update when the page becomes visible again
+            document.addEventListener('visibilitychange', function() {
+                if (!document.hidden) {
+                    updateCartCount();
+                }
+            });
         });
 
+        // Global function to update cart count - used by both layout and cart pages
         async function updateCartCount() {
             try {
                 const response = await fetch('@Url.Action("GetCartCount", "Cart")');
-                if (response.ok) {
-                    const data = await response.json();
-                    const cartBadge = document.getElementById('cartCount');
-                    if (cartBadge) {
-                        cartBadge.textContent = data.count;
-                        // Show badge only if count > 0
-                        if (data.count === 0) {
-                            cartBadge.style.display = 'none';
-                        } else {
-                            cartBadge.style.display = 'inline';
-                        }
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                const data = await response.json();
+                const cartBadge = document.getElementById('cartCount');
+                if (cartBadge) {
+                    cartBadge.textContent = data.count;
+                    // Show/hide badge based on count
+                    if (data.count > 0) {
+                        cartBadge.style.display = 'inline';
+                    } else {
+                        cartBadge.style.display = 'none';
                     }
                 }
             } catch (error) {
                 console.error('Error updating cart count:', error);
+                // Don't show error to user for cart count updates
             }
+        }
+
+        // Global function to show toast notifications
+        function showToast(message, type) {
+            // Remove any existing toasts first
+            const existingToasts = document.querySelectorAll('.alert.position-fixed');
+            existingToasts.forEach(toast => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            });
+
+            const toast = document.createElement('div');
+            toast.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
+            toast.style.cssText = 'top: 20px; right: 20px; z-index: 1050; min-width: 300px;';
+            toast.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check' : 'exclamation'}-circle me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 3000);
         }
     </script>
 

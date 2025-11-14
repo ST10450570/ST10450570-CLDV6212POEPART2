@@ -77,14 +77,12 @@ namespace ABCRetailsFunctions.Functions
                 string.IsNullOrWhiteSpace(input.ProductId) || input.Quantity < 1)
                 return HttpJson.Bad(req, "CustomerId, ProductId, and Quantity (>= 1) are required");
 
-            // Initialize clients from constructor fields (_conn, _productsTable, _customersTable, _ordersTable)
             var products = new TableClient(_conn, _productsTable);
             var customers = new TableClient(_conn, _customersTable);
             var orders = new TableClient(_conn, _ordersTable);
 
             ProductEntity product;
             CustomerEntity customer;
-            
 
             // 1. Get Product
             try
@@ -93,10 +91,9 @@ namespace ABCRetailsFunctions.Functions
             }
             catch { return HttpJson.Bad(req, "Invalid ProductId"); }
 
-            // 2. Get Customer
+            // 2. Get Customer - This is critical for customer order visibility
             try
             {
-                // This is only for validation, Customer data is not strictly needed for the Order Entity
                 customer = (await customers.GetEntityAsync<CustomerEntity>("Customer", input.CustomerId)).Value;
             }
             catch { return HttpJson.Bad(req, "Invalid CustomerId"); }
@@ -105,37 +102,37 @@ namespace ABCRetailsFunctions.Functions
             if (product.StockAvailable < input.Quantity)
                 return HttpJson.Bad(req, $"Insufficient stock. Available: {product.StockAvailable}");
 
-            // --- SYNCHRONOUS ORDER PROCESSING ---
-
-            // 4. Create and save the order entity
+            // 4. Create and save the order entity - CRITICAL: Include customer username
             var order = new OrderEntity
             {
                 CustomerId = input.CustomerId,
+                Username = customer.Username, // This ensures customer can see their orders
                 ProductId = input.ProductId,
                 ProductName = product.ProductName,
                 ProductImageUrl = product.ImageUrl,
                 Quantity = input.Quantity,
                 UnitPrice = product.Price,
+                TotalPrice = product.Price * input.Quantity,
                 OrderDateUtc = DateTimeOffset.UtcNow,
-                Status = "Pending"
+                Status = "Submitted"
             };
 
             await orders.AddEntityAsync(order);
 
-            // 5. Update product stock synchronously
+            // 5. Update product stock
             product.StockAvailable -= input.Quantity;
-            // Use the retrieved ETag to ensure optimistic concurrency
             await products.UpdateEntityAsync(product, product.ETag, TableUpdateMode.Replace);
 
-            // 6. Return 'Created' (201) to signal success and immediate availability
             return HttpJson.Created(req, Map.ToDto(order));
         }
+
 
 
         public record OrderStatusUpdate(string Status);
         [Function("Orders_UpdateStatus")]
         public async Task<HttpResponseData> UpdateStatus(
-    [HttpTrigger(AuthorizationLevel.Anonymous, "patch", Route = "orders/{id}/status")] HttpRequestData req, string id)
+    [HttpTrigger(AuthorizationLevel.Anonymous, "patch", Route = "orders/{id}/status")]
+    HttpRequestData req, string id)
         {
             var input = await HttpJson.ReadAsync<OrderStatusUpdate>(req);
             if (input is null || string.IsNullOrWhiteSpace(input.Status))
@@ -144,17 +141,14 @@ namespace ABCRetailsFunctions.Functions
             var orders = new TableClient(_conn, _ordersTable);
             try
             {
-                // FIX: Use "Order" as partition key and id as row key
                 var resp = await orders.GetEntityAsync<OrderEntity>("Order", id);
                 var e = resp.Value;
                 e.Status = input.Status;
                 await orders.UpdateEntityAsync(e, e.ETag, TableUpdateMode.Replace);
-
                 return HttpJson.Ok(req, Map.ToDto(e));
             }
             catch (Exception ex)
             {
-                // Log the actual error
                 Console.WriteLine($"Error updating order status: {ex.Message}");
                 return HttpJson.NotFound(req, "Order not found");
             }
@@ -171,7 +165,7 @@ namespace ABCRetailsFunctions.Functions
 
         [Function("Orders_Update")]
         public async Task<HttpResponseData> Update(
-    [HttpTrigger(AuthorizationLevel.Anonymous, "put", Route = "orders/{id}")] HttpRequestData req, string id)
+     [HttpTrigger(AuthorizationLevel.Anonymous, "put", Route = "orders/{id}")] HttpRequestData req, string id)
         {
             var input = await HttpJson.ReadAsync<Dictionary<string, object>>(req);
             if (input is null) return HttpJson.Bad(req, "Invalid body");
@@ -183,25 +177,25 @@ namespace ABCRetailsFunctions.Functions
                 var e = resp.Value;
 
                 // Update fields that can be changed
-                if (input.TryGetValue("Quantity", out var qty))
-                    e.Quantity = Convert.ToInt32(qty);
-
-                if (input.TryGetValue("Status", out var status))
-                    e.Status = status?.ToString() ?? e.Status;
-
-                if (input.TryGetValue("OrderDate", out var orderDate))
+                if (input.TryGetValue("Quantity", out var qty) && qty != null)
                 {
-                    if (orderDate is string dateStr && DateTime.TryParse(dateStr, out var dt))
-                        e.OrderDateUtc = DateTime.SpecifyKind(dt, DateTimeKind.Utc);
-                    else if (orderDate is DateTime dateTime)
-                        e.OrderDateUtc = DateTime.SpecifyKind(dateTime, DateTimeKind.Utc);
+                    var newQty = Convert.ToInt32(qty);
+                    e.Quantity = newQty;
+                    // Recalculate total based on quantity change
+                    e.TotalPrice = e.UnitPrice * newQty;
                 }
 
-                // Recalculate total if quantity changed
-                if (input.TryGetValue("Quantity", out var _))
+                if (input.TryGetValue("Status", out var status) && status != null)
+                    e.Status = status.ToString() ?? e.Status;
+
+                if (input.TryGetValue("OrderDate", out var orderDate) && orderDate != null)
                 {
-                    // Total price should be recalculated based on quantity * unit price
-                    // But we don't change unit price
+                    if (orderDate is string dateStr && DateTimeOffset.TryParse(dateStr, out var dt))
+                        e.OrderDateUtc = dt.ToUniversalTime();
+                    else if (orderDate is DateTime dateTime)
+                        e.OrderDateUtc = new DateTimeOffset(DateTime.SpecifyKind(dateTime, DateTimeKind.Utc));
+                    else if (orderDate is DateTimeOffset dto)
+                        e.OrderDateUtc = dto.ToUniversalTime();
                 }
 
                 await orders.UpdateEntityAsync(e, e.ETag, TableUpdateMode.Replace);
@@ -209,9 +203,9 @@ namespace ABCRetailsFunctions.Functions
             }
             catch (Exception ex)
             {
-                return HttpJson.Bad(req, $"Error: {ex.Message}");
+                return HttpJson.Bad(req, $"Error updating order: {ex.Message}");
             }
-        
+        }
+
     }
     }
-}

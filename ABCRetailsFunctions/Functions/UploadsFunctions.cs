@@ -1,4 +1,5 @@
-﻿using ABCRetailsFunctions.Helpers;
+﻿using System.Net;
+using ABCRetailsFunctions.Helpers;
 using Azure.Storage.Blobs;
 using Azure.Storage.Files.Shares;
 using Microsoft.Azure.Functions.Worker;
@@ -208,6 +209,42 @@ public class UploadsFunctions
         catch (Exception ex)
         {
             return HttpJson.Bad(req, $"Error: {ex.Message}");
+        }
+
+
+    }
+    [Function("Uploads_Download")]
+    public async Task<HttpResponseData> Download(
+    [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "uploads/{fileName}/download")] HttpRequestData req, string fileName)
+    {
+        try
+        {
+            // Get the blob client
+            var container = new BlobContainerClient(_conn, _proofs);
+            var blob = container.GetBlobClient(fileName);
+
+            // Check if blob exists
+            if (!await blob.ExistsAsync())
+            {
+                return HttpJson.NotFound(req, "File not found");
+            }
+
+            // Download blob content
+            var download = await blob.DownloadContentAsync();
+            var content = download.Value.Content;
+
+            // Create response with file content
+            var response = req.CreateResponse(HttpStatusCode.OK);
+            response.Headers.Add("Content-Type", "application/octet-stream");
+            response.Headers.Add("Content-Disposition", $"attachment; filename=\"{fileName}\"");
+
+            await response.WriteBytesAsync(content.ToArray());
+
+            return response;
+        }
+        catch (Exception ex)
+        {
+            return HttpJson.Bad(req, $"Error downloading file: {ex.Message}");
         }
     }
 }

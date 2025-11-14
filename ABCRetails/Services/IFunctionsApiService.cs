@@ -89,6 +89,8 @@ namespace ABCRetails.Services
             }
         }
 
+
+
         public async Task<Customer> UpdateCustomerAsync(Customer customer)
         {
             try
@@ -607,6 +609,25 @@ namespace ABCRetails.Services
             }
         }
 
+        public async Task<byte[]> DownloadFileAsync(string fileName)
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync($"api/uploads/{fileName}/download");
+                if (response.IsSuccessStatusCode)
+                {
+                    return await response.Content.ReadAsByteArrayAsync();
+                }
+                _logger.LogWarning("Failed to download file {FileName}: {StatusCode}", fileName, response.StatusCode);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error downloading file {FileName}", fileName);
+                return null;
+            }
+        }
+
         // Search operations
         public async Task<List<Customer>> SearchCustomersAsync(string searchTerm)
         {
@@ -704,7 +725,8 @@ namespace ABCRetails.Services
             TotalPrice = (double)dto.TotalAmount,
             OrderDate = dto.OrderDateUtc.DateTime,
             Status = dto.Status ?? "Submitted",
-            Username = dto.CustomerId ?? string.Empty // Using CustomerId as Username for now
+            Username = dto.Username ?? dto.CustomerId ?? string.Empty, // Use username from DTO
+           
         };
 
         // DTO records for Functions API
@@ -718,9 +740,11 @@ namespace ABCRetails.Services
             public string Id { get; set; } = string.Empty;
         }
 
+        // In FunctionsApiService.cs, update the private OrderDto record:
         private record OrderDto(
             string Id, string CustomerId, string ProductId, string ProductName,
-            int Quantity, decimal UnitPrice, decimal TotalAmount, DateTimeOffset OrderDateUtc, string Status);
+            int Quantity, decimal UnitPrice, decimal TotalAmount, DateTimeOffset OrderDateUtc, string Status, string Username);
+
 
         private record OrderCreateDto(string CustomerId, string ProductId, int Quantity);
 

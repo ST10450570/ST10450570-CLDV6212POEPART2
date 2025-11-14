@@ -133,24 +133,7 @@
         </div>
     </div>
 
-        <div class="col-md-3">
-            <div class="card shadow-sm sticky-top" style="top: 1rem;">
-                <div class="card-header bg-light text-center">
-                    <h6 class="mb-0">Product Image</h6>
-                </div>
-                <div class="card-body text-center">
-                    @if (!string.IsNullOrEmpty(Model.ProductImageUrl))
-                    {
-                        <img src="@Model.ProductImageUrl" alt="Product Image"
-                             class="img-fluid rounded mb-2 border" style="max-height: 220px;" />
-                    }
-                    else
-                    {
-                        <p class="text-muted">No image available</p>
-                    }
-                </div>
-            </div>
-        </div>
+        
 </div>
 
 @section Styles {

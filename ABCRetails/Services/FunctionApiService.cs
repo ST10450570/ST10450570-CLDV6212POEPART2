@@ -34,12 +34,15 @@ namespace ABCRetails.Services
         Task<List<UploadedFile>> GetUploadedFilesAsync();
         Task<UploadedFile?> GetUploadedFileAsync(string fileName);
         Task<bool> DeleteUploadedFileAsync(string fileName);
+        Task<byte[]> DownloadFileAsync(string fileName);
 
         // Search operations
         Task<List<Customer>> SearchCustomersAsync(string searchTerm);
         Task<List<Product>> SearchProductsAsync(string searchTerm);
         Task<List<Order>> SearchOrdersAsync(string searchTerm);
     }
+
+
 
     public class UploadedFile
     {
