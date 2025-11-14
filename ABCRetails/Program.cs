@@ -98,8 +98,8 @@ namespace ABCRetails
                         },
                         new User
                         {
-                            Username = "customer01",
-                            Email = "customer@abcretail.com",
+                            Username = "customer1",
+                            Email = "customer1@gmail.com",
                             PasswordHash = "customerpass123_hashed",
                             Role = "Customer",
                             CreatedAt = DateTime.UtcNow
