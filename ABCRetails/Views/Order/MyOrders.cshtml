@@ -44,7 +44,7 @@
                 <table class="table table-hover mb-0">
                     <thead class="table-dark">
                         <tr>
-                            <th>Image</th>
+                           
                             <th>Order ID</th>
                             <th>Product</th>
                             <th>Quantity</th>
@@ -58,20 +58,7 @@
                         @foreach (var item in Model)
                         {
                             <tr>
-                                <td>
-                                    @if (!string.IsNullOrEmpty(item.ProductImageUrl))
-                                    {
-                                        <img src="@item.ProductImageUrl" alt="Product Image"
-                                             class="img-thumbnail"
-                                             style="max-height: 50px; max-width: 50px; object-fit: cover;" />
-                                    }
-                                    else
-                                    {
-                                        <div style="width: 50px; height: 50px; background-color: #f0f0f0; text-align: center; line-height: 50px;">
-                                            <i class="fas fa-image text-muted"></i>
-                                        </div>
-                                    }
-                                </td>
+                                
                                 <td>
                                     <span class="badge bg-info">@item.RowKey</span>
                                 </td>

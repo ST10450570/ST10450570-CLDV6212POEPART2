@@ -167,7 +167,8 @@ namespace ABCRetailsFunctions.Functions
         public async Task<HttpResponseData> Update(
      [HttpTrigger(AuthorizationLevel.Anonymous, "put", Route = "orders/{id}")] HttpRequestData req, string id)
         {
-            var input = await HttpJson.ReadAsync<Dictionary<string, object>>(req);
+            // FIX: Deserialize to a strong type (OrderUpdateDto) instead of a Dictionary
+            var input = await HttpJson.ReadAsync<OrderUpdateDto>(req);
             if (input is null) return HttpJson.Bad(req, "Invalid body");
 
             var orders = new TableClient(_conn, _ordersTable);
@@ -176,36 +177,40 @@ namespace ABCRetailsFunctions.Functions
                 var resp = await orders.GetEntityAsync<OrderEntity>("Order", id);
                 var e = resp.Value;
 
-                // Update fields that can be changed
-                if (input.TryGetValue("Quantity", out var qty) && qty != null)
-                {
-                    var newQty = Convert.ToInt32(qty);
-                    e.Quantity = newQty;
-                    // Recalculate total based on quantity change
-                    e.TotalPrice = e.UnitPrice * newQty;
-                }
+                // FIX: Update fields from the strongly-typed DTO
+                // We only update the fields that are actually editable on the form.
+                e.Quantity = input.Quantity;
+                e.Status = input.Status;
 
-                if (input.TryGetValue("Status", out var status) && status != null)
-                    e.Status = status.ToString() ?? e.Status;
+                // Ensure the DateTime is stored as UTC
+                e.OrderDateUtc = new DateTimeOffset(DateTime.SpecifyKind(input.OrderDate, DateTimeKind.Utc));
 
-                if (input.TryGetValue("OrderDate", out var orderDate) && orderDate != null)
-                {
-                    if (orderDate is string dateStr && DateTimeOffset.TryParse(dateStr, out var dt))
-                        e.OrderDateUtc = dt.ToUniversalTime();
-                    else if (orderDate is DateTime dateTime)
-                        e.OrderDateUtc = new DateTimeOffset(DateTime.SpecifyKind(dateTime, DateTimeKind.Utc));
-                    else if (orderDate is DateTimeOffset dto)
-                        e.OrderDateUtc = dto.ToUniversalTime();
-                }
+                // Recalculate total price based on the *original* unit price and the *new* quantity
+                e.TotalPrice = e.UnitPrice * input.Quantity;
 
                 await orders.UpdateEntityAsync(e, e.ETag, TableUpdateMode.Replace);
                 return HttpJson.Ok(req, Map.ToDto(e));
             }
             catch (Exception ex)
             {
+                // Log the exception for easier debugging
+                Console.WriteLine($"Error updating order {id}: {ex.Message}");
                 return HttpJson.Bad(req, $"Error updating order: {ex.Message}");
             }
         }
+
+
+        public record OrderUpdateDto(
+            string CustomerId,
+            string ProductId,
+            string ProductName,
+            string ProductImageUrl,
+            int Quantity,
+            double UnitPrice,
+            double TotalPrice,
+            DateTime OrderDate,
+            string Status
+        );
 
     }
     }

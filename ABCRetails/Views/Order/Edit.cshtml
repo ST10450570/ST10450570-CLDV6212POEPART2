@@ -16,10 +16,19 @@
 
 <div class="row">
     <div class="col-md-12">
-        <form asp-action="Edit" class="shadow-sm p-4 bg-white rounded">
+
+        <!-- IMPORTANT: method="post" + asp-route-id + antiforgery token -->
+        <form asp-action="Edit"
+              asp-controller="Order"
+              asp-route-id="@Model.Id"
+              method="post"
+              class="shadow-sm p-4 bg-white rounded">
+
+            @Html.AntiForgeryToken()
+
             <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
-            <!-- Hidden fields -->
+            <!-- Hidden fields required for correct binding -->
             <input type="hidden" asp-for="Id" />
             <input type="hidden" asp-for="Order.PartitionKey" />
             <input type="hidden" asp-for="Order.RowKey" />
@@ -40,7 +49,7 @@
                 <div class="card-body row g-3">
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Order ID</label>
-                        <input value="@Model.Order.OrderId" class="form-control" readonly />
+                        <input value="@Model.Id" class="form-control" readonly />
                     </div>
 
                     <div class="col-md-6">
@@ -90,7 +99,9 @@
                         <select asp-for="Order.Status" class="form-control">
                             @foreach (var status in Model.StatusOptions)
                             {
-                                <option value="@status">@status</option>
+                                <option value="@status" selected="@(Model.Order.Status == status)">
+                                    @status
+                                </option>
                             }
                         </select>
                         <span asp-validation-for="Order.Status" class="text-danger"></span>
@@ -105,6 +116,7 @@
                 </a>
                 <button type="submit" class="btn btn-primary px-4">Save Changes</button>
             </div>
+
         </form>
     </div>
 </div>
@@ -190,4 +202,5 @@
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
+
 }
