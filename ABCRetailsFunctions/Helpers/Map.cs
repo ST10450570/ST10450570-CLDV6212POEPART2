@@ -42,7 +42,7 @@ public static class Map
             TotalAmount: totalPrice,
             OrderDateUtc: e.OrderDateUtc,
             Status: e.Status ?? "Submitted",
-            ProductImageUrl: e.ProductImageUrl ?? "",
+            
             Username: e.Username ?? e.CustomerId // Add username as the last parameter
         );
     }

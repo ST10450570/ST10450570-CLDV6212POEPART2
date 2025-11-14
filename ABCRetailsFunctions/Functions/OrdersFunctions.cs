@@ -10,7 +10,6 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Configuration;
 
-
 namespace ABCRetailsFunctions.Functions
 {
     public class OrdersFunctions
@@ -20,7 +19,6 @@ namespace ABCRetailsFunctions.Functions
         private readonly string _productsTable;
         private readonly string _customersTable;
         private readonly string _queueOrder;
-        
 
         public OrdersFunctions(IConfiguration cfg)
         {
@@ -69,8 +67,8 @@ namespace ABCRetailsFunctions.Functions
 
         [Function("Orders_Create")]
         public async Task<HttpResponseData> Create(
-    [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "orders")]
-    HttpRequestData req)
+            [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "orders")]
+            HttpRequestData req)
         {
             var input = await HttpJson.ReadAsync<OrderCreate>(req);
             if (input is null || string.IsNullOrWhiteSpace(input.CustomerId) ||
@@ -109,7 +107,6 @@ namespace ABCRetailsFunctions.Functions
                 Username = customer.Username, // This ensures customer can see their orders
                 ProductId = input.ProductId,
                 ProductName = product.ProductName,
-                ProductImageUrl = product.ImageUrl,
                 Quantity = input.Quantity,
                 UnitPrice = product.Price,
                 TotalPrice = product.Price * input.Quantity,
@@ -126,13 +123,12 @@ namespace ABCRetailsFunctions.Functions
             return HttpJson.Created(req, Map.ToDto(order));
         }
 
-
-
         public record OrderStatusUpdate(string Status);
+
         [Function("Orders_UpdateStatus")]
         public async Task<HttpResponseData> UpdateStatus(
-    [HttpTrigger(AuthorizationLevel.Anonymous, "patch", Route = "orders/{id}/status")]
-    HttpRequestData req, string id)
+            [HttpTrigger(AuthorizationLevel.Anonymous, "patch", Route = "orders/{id}/status")]
+            HttpRequestData req, string id)
         {
             var input = await HttpJson.ReadAsync<OrderStatusUpdate>(req);
             if (input is null || string.IsNullOrWhiteSpace(input.Status))
@@ -165,7 +161,7 @@ namespace ABCRetailsFunctions.Functions
 
         [Function("Orders_Update")]
         public async Task<HttpResponseData> Update(
-     [HttpTrigger(AuthorizationLevel.Anonymous, "put", Route = "orders/{id}")] HttpRequestData req, string id)
+            [HttpTrigger(AuthorizationLevel.Anonymous, "put", Route = "orders/{id}")] HttpRequestData req, string id)
         {
             // FIX: Deserialize to a strong type (OrderUpdateDto) instead of a Dictionary
             var input = await HttpJson.ReadAsync<OrderUpdateDto>(req);
@@ -199,18 +195,15 @@ namespace ABCRetailsFunctions.Functions
             }
         }
 
-
         public record OrderUpdateDto(
             string CustomerId,
             string ProductId,
             string ProductName,
-            string ProductImageUrl,
             int Quantity,
             double UnitPrice,
             double TotalPrice,
             DateTime OrderDate,
             string Status
         );
-
     }
-    }
+}

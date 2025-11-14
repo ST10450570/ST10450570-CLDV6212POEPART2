@@ -57,7 +57,7 @@ namespace ABCRetailsFunctions.Functions
                     CustomerId = root.GetProperty("CustomerId").GetString(),
                     ProductId = productId,
                     ProductName = root.GetProperty("ProductName").GetString(),
-                    ProductImageUrl = root.GetProperty("ProductImageUrl").GetString() ?? "",
+                   
                     Quantity = quantity,
                     UnitPrice = root.GetProperty("UnitPrice").GetDouble(),
                     OrderDateUtc = DateTimeOffset.UtcNow,

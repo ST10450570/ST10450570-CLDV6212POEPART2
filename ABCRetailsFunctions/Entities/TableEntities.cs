@@ -49,5 +49,5 @@ public class OrderEntity : ITableEntity
     public double TotalPrice { get; set; }
     public DateTimeOffset OrderDateUtc { get; set; } = DateTimeOffset.UtcNow;
     public string Status { get; set; } = "Submitted";
-    public string ProductImageUrl { get; set; } = "";
+   
 }

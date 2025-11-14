@@ -40,6 +40,8 @@ namespace ABCRetails.Services
         Task<List<Customer>> SearchCustomersAsync(string searchTerm);
         Task<List<Product>> SearchProductsAsync(string searchTerm);
         Task<List<Order>> SearchOrdersAsync(string searchTerm);
+
+
     }
 
 

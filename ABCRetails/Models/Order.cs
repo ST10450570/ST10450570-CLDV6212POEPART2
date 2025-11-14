@@ -53,7 +53,6 @@ namespace ABCRetails.Models
         public string Status { get; set; } = "Submitted";
 
         public string ProductImageUrl { get; set; } = string.Empty;
-
     }
 
     public enum OrderStatus

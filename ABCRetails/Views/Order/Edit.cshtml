@@ -1,10 +1,8 @@
 ﻿@model ABCRetails.Models.ViewModels.OrderEditViewModel
-
 @{
     ViewData["Title"] = "Edit Order";
 }
 
-<!-- Enhanced Header with Block Bubble Effect -->
 <div class="header-bubble mb-4">
     <h1 class="text-white">Edit Order</h1>
     <div class="bubble-decoration">
@@ -16,7 +14,6 @@
 
 <div class="row">
     <div class="col-md-12">
-        <!-- CRITICAL FIX: Explicitly set method="post" and asp-route-id -->
         <form asp-action="Edit"
               asp-controller="Order"
               asp-route-id="@Model.Id"
@@ -27,7 +24,6 @@
 
             <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
-            <!-- Hidden fields - CRITICAL: These must be present -->
             <input type="hidden" asp-for="Id" />
             <input type="hidden" asp-for="Order.CustomerId" />
             <input type="hidden" asp-for="Order.Username" />
@@ -36,7 +32,6 @@
             <input type="hidden" asp-for="Order.UnitPrice" />
             <input type="hidden" asp-for="Order.ProductImageUrl" />
 
-            <!-- Order Information -->
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-light">
                     <h5 class="mb-0">Order Information</h5>
@@ -67,7 +62,6 @@
                 </div>
             </div>
 
-            <!-- Pricing & Status -->
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-light">
                     <h5 class="mb-0">Pricing & Status</h5>
@@ -107,7 +101,6 @@
                 </div>
             </div>
 
-            <!-- Action buttons -->
             <div class="d-flex justify-content-between">
                 <a asp-action="Index" class="btn btn-outline-secondary">
                     <i class="fas fa-arrow-left me-1"></i> Back to List
@@ -207,6 +200,25 @@
             const submitBtn = this.querySelector('button[type="submit"]');
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Saving...';
+        });
+
+        // Auto-calculate total price when quantity changes
+        document.getElementById('Order_Quantity').addEventListener('input', function() {
+            const quantity = parseInt(this.value) || 0;
+            const unitPrice = @Model.Order.UnitPrice;
+            const totalPrice = quantity * unitPrice;
+
+            // Format as currency
+            const formattedTotal = new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD'
+            }).format(totalPrice);
+
+            // Update the display (you might want to add an ID to your total price input)
+            const totalInput = document.querySelector('input[value*="$"]');
+            if (totalInput) {
+                totalInput.value = formattedTotal;
+            }
         });
     </script>
 }

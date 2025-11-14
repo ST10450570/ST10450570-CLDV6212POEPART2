@@ -9,6 +9,6 @@ namespace ABCRetails.Models.ViewModels
         public List<Customer> Customers { get; set; } = new List<Customer>();
         public List<Product> Products { get; set; } = new List<Product>();
         public List<string> StatusOptions { get; set; } = new List<string>();
-        public string Status { get; set; } 
+        
     }
 }
